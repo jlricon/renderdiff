@@ -1,0 +1,8 @@
+/target
+*.sqlite
+src/diff/target/
+.idea/
+.env
+.DS_Store
+api/node_modules/
+dist

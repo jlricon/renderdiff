@@ -1,0 +1,10 @@
+{
+  "body_part": "script",
+  "bindings": [
+    {
+      "name": "wasmprogram",
+      "type": "wasm_module",
+      "part": "wasmprogram"
+    }
+  ]
+}

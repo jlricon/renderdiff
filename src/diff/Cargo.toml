@@ -1,0 +1,15 @@
+[package]
+name = "diff"
+version = "0.1.0"
+authors = ["Jose Luis <joseluisr@twitter.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dissimilar = "1.0.1"
+serde = { version = "1.0.105", optional = true, features = ["derive"] }
+[features]
+# no features by default
+default = []
+serde_support = ["serde"]
