@@ -1,5 +1,5 @@
 name = "diff_text"
-type = "webpack"
+type = "rust"
 account_id = "cee63b550cf33e4de8442c27f8f6432c"
 workers_dev = true
-webpack_config = "webpack.config.js"
+# webpack_config = "webpack.config.js"

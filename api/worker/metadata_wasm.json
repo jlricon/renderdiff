@@ -2,7 +2,7 @@
   "body_part": "script",
   "bindings": [
     {
-      "name": "wasmprogram",
+      "name": "wasm",
       "type": "wasm_module",
       "part": "wasmprogram"
     }

@@ -6,3 +6,6 @@ src/diff/target/
 .DS_Store
 api/node_modules/
 dist
+node_modules/
+.serverless
+go_db/

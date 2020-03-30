@@ -1,6 +1,7 @@
 use dissimilar::{diff, Chunk};
 #[cfg(feature = "serde_support")]
 use serde::Serialize;
+const TRIM_LEN: usize = 30;
 #[cfg_attr(feature = "serde_support", derive(Serialize))]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Diff<'a> {
@@ -43,9 +44,44 @@ pub fn get_diff<'a>(a: &'a str, b: &'a str) -> Difference<'a> {
         chunks: diff(a, b).into_iter().map(|i| Diff::from(i)).collect(),
     }
 }
-
+pub fn strings_are_dif_equal<'a>(a: &'a str, b: &'a str) -> bool {
+    // If all strings are equal and we filter them out, count=0
+    diff(a, b)
+        .iter()
+        .filter(|m| match m {
+            Chunk::Equal(_) => false,
+            _ => true,
+        })
+        .count()
+        == 0
+}
+fn trim_string(a: String) -> String {
+    if a.len() < (TRIM_LEN * 2 + 1) {
+        a
+    } else {
+        format!(
+            "{} [...] {}",
+            a.chars().take(TRIM_LEN).collect::<String>(),
+            a.chars()
+                .rev()
+                .take(TRIM_LEN)
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect::<String>(),
+        )
+    }
+}
 pub fn get_owned_diff(a: &str, b: &str) -> Vec<OwnedDiff> {
-    diff(a, b).into_iter().map(|i| OwnedDiff::from(i)).collect()
+    diff(a, b)
+        .into_iter()
+        // Trim equal strings
+        .map(|i| OwnedDiff::from(i))
+        .map(|i| match i {
+            OwnedDiff::Equal(e) => OwnedDiff::Equal(trim_string(e)),
+            x => x,
+        })
+        .collect()
 }
 #[cfg(test)]
 mod test {

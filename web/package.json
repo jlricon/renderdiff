@@ -11,12 +11,18 @@
     "@zeit/fetch": "^6.0.0",
     "isomorphic-unfetch": "^3.0.0",
     "next": "9.3.2",
+    "rc-slider": "^9.2.4",
     "react": "16.13.1",
+    "react-compound-slider": "^2.5.0",
     "react-dom": "16.13.1"
   },
   "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^2.1.0",
     "@types/node": "^13.9.5",
     "@types/react": "^16.9.26",
+    "@zeit/next-css": "^1.0.1",
+    "autoprefixer": "^9.7.5",
+    "next-purgecss": "^4.0.0",
     "postcss-preset-env": "^6.7.0",
     "tailwindcss": "^1.2.0",
     "typescript": "^3.8.3"

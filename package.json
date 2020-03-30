@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "serverless": "^1.57.0",
+    "serverless-dotenv-plugin": "^2.3.2",
+    "serverless-rust": "^0.3.7"
+  },
+  "name": "update_db"
+}
