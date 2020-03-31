@@ -45,3 +45,28 @@ export async function getLatestDiffs(
 
   return resp;
 }
+interface DiffTwoReturn {
+  diff: DiffDict[];
+  date_rev1: string;
+  date_rev2: string;
+}
+export async function getDiffsForTwo(
+  url: string,
+  rev1: number,
+  rev2: number
+): Promise<DiffTwoReturn> {
+  const req = {
+    kind: "diff_two",
+    params: { url: url, v1: rev1, v2: rev2 }
+  };
+  let resp = await fetch(HOST, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(req)
+  }).then(e => e.json());
+  console.log(resp);
+  return resp.data;
+}

@@ -5,8 +5,10 @@ addEventListener("fetch", event => {
       // traces in response bodies. You are advised to
       // remove this .catch() in production.
       .catch(
-        e =>
-          new Response(e.stack, {
+        (
+          e //e.stack
+        ) =>
+          new Response("Server error of some kind...", {
             status: 500,
             statusText: "Internal Server Error"
           })
@@ -35,10 +37,10 @@ async function handle(event) {
       const was = wasm_bindgen;
       await wasm_bindgen(wasm);
       response = await handlePost(request, was);
-      if (response.ok) {
-        response.headers.append("Cache-Control", "max-age=3500");
-        event.waitUntil(cache.put(cacheKey, response.clone()));
-      }
+      // if (response.ok) {
+      //   response.headers.append("Cache-Control", "max-age=60");
+      //   event.waitUntil(cache.put(cacheKey, response.clone()));
+      // }
     } else {
     }
     return response;
@@ -138,7 +140,7 @@ async function getDiffForUrlAndRevisions(url, v1, v2, wasm) {
     body: JSON.stringify({
       query: `query MyQuery($url: String!, $rev1: Int!, $rev2: Int!) {
           vox_records(where: {url: {_eq: $url}, revision: {_in: [$rev1,$rev2]}}) {
-            content, revision
+            content, revision, date_seen
           }
         }`,
       variables: { url: url, rev1: v1, rev2: v2 }
@@ -155,7 +157,11 @@ async function getDiffForUrlAndRevisions(url, v1, v2, wasm) {
   const content_v1 = records.filter(e => e.revision === v1)[0];
   const content_v2 = records.filter(e => e.revision === v2)[0];
   const diffed_text = diff_text(content_v1.content, content_v2.content);
-  return diffed_text;
+  return {
+    diff: diffed_text,
+    date_rev1: content_v1.date_seen,
+    date_rev2: content_v2.date_seen
+  };
 }
 // Returns the diffs of the last 20 changes wrt their previous changes
 async function getLastDiffs(wasm, n, offset) {

@@ -1,39 +1,68 @@
-import { DiffDict } from "../lib/lib";
+import { DiffDict, getDiffsForTwo } from "../lib/lib";
 import { DiffBunch } from "../lib/lib";
 import { RevisionButton } from "./RevisionButton";
+import { useState } from "react";
+interface Props {
+  data: DiffBunch;
+}
+function Card({ data }: Props) {
+  const [dataState, setData] = useState(data);
+  const [lastRevision, setLastRevision] = useState(data.last_revision);
+  async function updateDataAfterSliderIsClicked(rev1: number, rev2: number) {
+    const resp = await getDiffsForTwo(dataState.url, rev1, rev2);
+    const newData: DiffBunch = {
+      diff: resp.diff,
+      last_revision: rev2,
+      prev_revision: rev1,
+      url: dataState.url,
+      date_seen1: resp.date_rev1,
+      date_seen2: resp.date_rev2
+    };
 
-const Card = (data: DiffBunch, k: number) => (
-  <div
-    className="bg-white shadow overflow-hidden sm:rounded-lg ml-10 mr-10 max-w-6xl mb-5"
-    key={k}
-  >
-    <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-      <h3 className="text-md leading-3 font-medium text-gray-900">
-        <div className="flex justify-between">
-          <p>Last: {data.date_seen2.slice(0, 16).replace("T", " ")}</p>
-          <RevisionButton rev1={data.prev_revision} rev2={data.last_revision} />
+    setData(newData);
+  }
+  return (
+    <div className="bg-white shadow sm:rounded-lg ml-10 mr-10 max-w-6xl mb-5 justify-center">
+      <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+        <h3 className="text-md leading-3 font-medium text-gray-900">
+          <div className="flex justify-between">
+            <p>
+              Previous: {dataState.date_seen1.slice(0, 16).replace("T", " ")}
+            </p>
+            <RevisionButton
+              rev1={dataState.prev_revision}
+              rev2={dataState.last_revision}
+              lastRevision={lastRevision}
+              updateHandler={updateDataAfterSliderIsClicked}
+            />
 
-          <p>Previous: {data.date_seen1.slice(0, 16).replace("T", " ")}</p>
-        </div>
-      </h3>
-      <p className="mt-1 text-sm leading-5 text-gray-500">
-        From{" "}
-        <a className="hover:text-teal-300" href={data.url}>
-          {data.url}
-        </a>
-      </p>
+            <p>Last: {dataState.date_seen2.slice(0, 16).replace("T", " ")}</p>
+          </div>
+        </h3>
+        <p className="mt-1 text-sm leading-5 text-gray-500">
+          From{" "}
+          <a className="hover:text-teal-300" href={dataState.url}>
+            {dataState.url}
+          </a>
+        </p>
+      </div>
+
+      <div className="bg-gray-50 px-4 py-5 sm:gap-4 sm:px-6 text-sm text-justify break-all">
+        {dataState.diff.map((e, index) => (
+          <ColoredDiff diff={e} key={index} />
+        ))}
+      </div>
     </div>
-
-    <div className="bg-gray-50 px-4 py-5 sm:gap-4 sm:px-6 text-sm text-justify">
-      {data.diff.map((e, index) => coloredDiff(e, index))}
-    </div>
-  </div>
-);
+  );
+}
+interface ColoredDiffProps {
+  diff: DiffDict;
+}
 export default Card;
-function coloredDiff(diff: DiffDict, index: number) {
+function ColoredDiff({ diff }: ColoredDiffProps) {
   if ("Equal" in diff) {
     return (
-      <span className="font-hairline" key={index}>
+      <span className="font-hairline">
         {/* {diff["Equal"].slice(0, 30) +
           "[...]" +
           diff["Equal"].slice(diff["Equal"].length - 30, diff["Equal"].length)} */}
@@ -43,14 +72,14 @@ function coloredDiff(diff: DiffDict, index: number) {
   }
   if ("Delete" in diff) {
     return (
-      <span className="text-red-600 font-medium bg-red-100" key={index}>
+      <span className="text-red-600 font-medium bg-red-100">
         {diff["Delete"]}
       </span>
     );
   }
   if ("Insert" in diff) {
     return (
-      <span className="text-green-600 font-medium  bg-green-100" key={index}>
+      <span className="text-green-600 font-medium  bg-green-100">
         {diff["Insert"]}
       </span>
     );

@@ -9,7 +9,7 @@ const LoadMoreButton = ({ isLoaded, handler }) => {
   if (!isLoaded) {
     return (
       <button className={commonCss} onClick={event => handler(5)}>
-        Load More
+        Load 5 more
       </button>
     );
   } else {
@@ -30,22 +30,22 @@ function Home({ data }: Props) {
   async function handleButtonClick(n: number) {
     const newData = await getLatestDiffs(n, loadedN);
     const prevLen = dataState.length;
-    setData(dataState.concat(newData.data));
-    console.log(newData.data.length, dataState.length);
+    const concatted = dataState.concat(newData.data);
+    setData(concatted);
     if (newData.data.length !== 0) {
       setLoadedN(newData.data.length + prevLen);
     } else {
       setAllLoaded(true);
     }
   }
-  useEffect(() => {
-    // Create an scoped async function in the hook
-    // async function anyNameFunction() {
-    //   await handleButtonClick(10);
-    // }
-    // // Execute the created function directly
-    // anyNameFunction();
-  }, []);
+  // useEffect(() => {
+  //   // Create an scoped async function in the hook
+  //   // async function anyNameFunction() {
+  //   //   await handleButtonClick(10);
+  //   // }
+  //   // // Execute the created function directly
+  //   // anyNameFunction();
+  // }, []);
   return (
     <div
       className="flex flex-col bg-gray-100 h-cover w-cover"
@@ -55,32 +55,35 @@ function Home({ data }: Props) {
         <title>Commitment</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <div className="mx-auto">
+        <h1 className="font-bold  text-4xl md:text-6xl text-center text-gray-800">
+          <a>Commitment</a>
+        </h1>
+        <h2 className="text-sm text-center pb-4">
+          What has been seen cannot be unseen :)
+        </h2>
+        <main>
+          {dataState.map((c, index) => (
+            <Card data={c} key={index} />
+          ))}
+        </main>
+        <div className="justify-center text-center pb-3">
+          <LoadMoreButton isLoaded={allLoaded} handler={handleButtonClick} />
+        </div>
 
-      <h1 className="font-bold  text-4xl md:text-6xl text-center text-gray-800">
-        <a>Commitment</a>
-      </h1>
-      <h2 className="text-sm text-center pb-4">
-        What has been seen cannot be unseen :)
-      </h2>
-      <main className="mx-auto w-screen">
-        {dataState.map((c, index) => Card(c, index))}
-      </main>
-      <div className="justify-center text-center pb-3">
-        <LoadMoreButton isLoaded={allLoaded} handler={handleButtonClick} />
-      </div>
-
-      <div className="justify-center text-center pb-10 font-medium text-xs">
-        <a
-          className="pl-2 hover:text-teal-300 "
-          href="https://twitter.com/ArtirKel"
-        >
-          A public service by Jose Luis Ricon
-        </a>{" "}
-        (
-        <a className="hover:text-teal-300 " href="mailto:jose@ricon.xyz">
-          email
-        </a>
-        )
+        <div className="justify-center text-center pb-10 font-medium text-xs">
+          <a
+            className="pl-2 hover:text-teal-300 "
+            href="https://twitter.com/ArtirKel"
+          >
+            A public service by Jose Luis Ricon
+          </a>{" "}
+          (
+          <a className="hover:text-teal-300 " href="mailto:jose@ricon.xyz">
+            email
+          </a>
+          )
+        </div>
       </div>
     </div>
   );
