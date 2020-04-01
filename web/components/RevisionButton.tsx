@@ -15,6 +15,7 @@ export const RevisionButton = ({
   lastRevision
 }: Props) => {
   const marks = Array.from(Array(lastRevision).keys()).reduce((acc, elem) => {
+    // @ts-ignore
     acc[`${elem + 1}`] = elem + 1;
     return acc;
   }, {});

@@ -3,7 +3,12 @@ import { getLatestDiffs, DiffBunch } from "../lib/lib";
 import Card from "../components/Card";
 import { GetServerSideProps, GetStaticProps } from "next";
 import { useState, useEffect } from "react";
-const LoadMoreButton = ({ isLoaded, handler }) => {
+
+interface LoadMoreInterface {
+  isLoaded: boolean;
+  handler: (n: number) => Promise<void>;
+}
+const LoadMoreButton = ({ isLoaded, handler }: LoadMoreInterface) => {
   const commonCss =
     "bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-400 rounded shadow w-64";
   if (!isLoaded) {
@@ -21,7 +26,7 @@ const LoadMoreButton = ({ isLoaded, handler }) => {
   }
 };
 interface Props {
-  data: DiffBunch[];
+  data: DiffBunch<number>[];
 }
 function Home({ data }: Props) {
   const [dataState, setData] = useState(data);
@@ -64,7 +69,7 @@ function Home({ data }: Props) {
         </h2>
         <main>
           {dataState.map((c, index) => (
-            <Card data={c} key={index} />
+            <Card data={stringToDateBunch(c)} key={index} />
           ))}
         </main>
         <div className="justify-center text-center pb-3">
@@ -95,3 +100,13 @@ export const getServerSideProps: GetServerSideProps = async ctx => {
   const data = await getLatestDiffs(10, 0);
   return { props: { data: data.data } };
 };
+function stringToDateBunch(x: DiffBunch<number>): DiffBunch<Date> {
+  return {
+    diff: x.diff,
+    last_revision: x.last_revision,
+    prev_revision: x.prev_revision,
+    url: x.url,
+    date_seen1: new Date(x.date_seen1),
+    date_seen2: new Date(x.date_seen2)
+  };
+}

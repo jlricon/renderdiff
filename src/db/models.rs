@@ -12,10 +12,10 @@ pub struct VoxDbRecord {
 }
 #[derive(Insertable)]
 #[table_name = "vox_records"]
-pub struct InsertableVoxDbRecord {
-    pub url: String,
+pub struct InsertableVoxDbRecord<'a> {
+    pub url: &'a str,
     pub date_seen: NaiveDateTime,
-    pub content: String,
+    pub content: &'a str,
     pub revision: i32,
     pub latest: bool,
     pub site: String,

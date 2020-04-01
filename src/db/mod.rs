@@ -1,6 +1,6 @@
 mod models;
 mod schema;
-use crate::{LinkContent, LinkRef, VoxRecord};
+use crate::{LinkContentRef, LinkRef, RefVoxRecord, VoxRecord};
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 
@@ -35,12 +35,12 @@ pub fn get_previous_items(conn: &PgConnection) -> Vec<VoxRecord> {
         })
         .collect()
 }
-pub fn insert_records_first_seen(records: &[&LinkContent], conn: &PgConnection) {
+pub fn insert_records_first_seen(records: Vec<LinkContentRef>, conn: &PgConnection) {
     let insertables: Vec<InsertableVoxDbRecord> = records
         .iter()
         .map(|i| InsertableVoxDbRecord {
-            url: i.0.to_owned(),
-            content: i.1.clone(),
+            url: i.0,
+            content: i.1,
             date_seen: Utc::now().naive_utc(),
             revision: 1,
             latest: true,
@@ -53,18 +53,18 @@ pub fn insert_records_first_seen(records: &[&LinkContent], conn: &PgConnection) 
         .unwrap();
 }
 use diesel::result::Error;
-pub fn insert_diff_records_and_update_previous(records: &Vec<VoxRecord>, conn: &PgConnection) {
+pub fn insert_diff_records_and_update_previous(records: &Vec<RefVoxRecord>, conn: &PgConnection) {
     use schema::vox_records::dsl::{latest, url};
     let existing_urls: HashSet<LinkRef> = records.iter().map(|i| i.url.as_ref()).collect();
     let insertables: Vec<InsertableVoxDbRecord> = records
         .iter()
         .map(|i| InsertableVoxDbRecord {
-            url: i.url.clone(),
-            content: i.content.clone(),
+            url: i.url,
+            content: i.content,
             date_seen: Utc::now().naive_utc(),
             revision: i.revision as i32,
             latest: true,
-            site: Url::parse(&i.url).unwrap().host_str().unwrap().to_owned(),
+            site: Url::parse(i.url).unwrap().host_str().unwrap().to_owned(),
         })
         .collect();
     conn.transaction::<usize, Error, _>(|| {
@@ -73,7 +73,7 @@ pub fn insert_diff_records_and_update_previous(records: &Vec<VoxRecord>, conn: &
             .execute(conn)
             .unwrap();
         diesel::insert_into(vox_records::table)
-            .values(insertables)
+            .values(&insertables)
             .execute(conn)
     })
     .unwrap();

@@ -1,5 +1,6 @@
 import fetch from "isomorphic-unfetch";
 const HOST = "https://diff_text.jlricon.workers.dev/";
+// TODO Make into an enum
 export type Diff = "Equal" | "Insert" | "Delete";
 export type DiffDict = { [kind in Diff]: string };
 export type WorkerRequest = WorkerRequestDiffTwo | WorkerRequestLastDiffs;
@@ -14,27 +15,28 @@ interface WorkerRequestLastDiffs {
 interface Diffs {
   data: DiffDict[];
 }
-export interface DiffBunch {
+export interface DiffBunch<T> {
   url: string;
   last_revision: number;
-  prev_revision?: number;
-  date_seen1: string;
-  date_seen2: string;
+  prev_revision: number;
+  date_seen1: T;
+  date_seen2: T;
   diff: DiffDict[];
 }
-interface LastDiffs {
-  data: DiffBunch[];
+interface LastDiffs<T> {
+  data: DiffBunch<T>[];
 }
+
 // Returns [(url,last_revision,site,diff,date_seen1,date_seen2)]
 export async function getLatestDiffs(
   n: number,
   offset: number
-): Promise<LastDiffs> {
+): Promise<LastDiffs<number>> {
   const req: WorkerRequestLastDiffs = {
     kind: "last_diffs",
     params: { n: n, offset: offset }
   };
-  let resp: LastDiffs = await fetch(HOST, {
+  let resp: LastDiffs<string | number> = await fetch(HOST, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -42,8 +44,14 @@ export async function getLatestDiffs(
     },
     body: JSON.stringify(req)
   }).then(e => e.json());
-
-  return resp;
+  resp.data.map(d => {
+    d.date_seen1 = Date.parse(d.date_seen1 as string);
+    d.date_seen2 = Date.parse(d.date_seen2 as string);
+  });
+  let resp2 = resp as LastDiffs<number>;
+  resp2.data = resp2.data.sort((a, b) => b.date_seen1 - a.date_seen1);
+  console.log(resp2);
+  return resp2 as LastDiffs<number>;
 }
 interface DiffTwoReturn {
   diff: DiffDict[];

@@ -23,9 +23,15 @@ pub type Link = String;
 pub type LinkRef<'a> = &'a str;
 type Content = String;
 pub type LinkContent = (Link, Content);
+pub type LinkContentRef<'a> = (&'a str, &'a str);
 pub struct VoxRecord {
     pub url: String,
     pub content: String,
+    pub revision: u32,
+}
+pub struct RefVoxRecord<'a> {
+    pub url: &'a str,
+    pub content: &'a str,
     pub revision: u32,
 }
 const VOX: &str = "https://www.vox.com";
@@ -33,13 +39,17 @@ const VOX: &str = "https://www.vox.com";
 pub type DiffError = Box<dyn std::error::Error>;
 type ContentRef<'a> = &'a str;
 type Revision = u32;
-
-fn get_content_for_one(addr: &str) -> Result<String, DiffError> {
+// TODO: Make unwraps more robust, check isahc codes
+fn get_content_for_one(addr: &str, client: &HttpClient) -> Result<String, DiffError> {
     let mut response = retry(Exponential::from_millis(5000).map(jitter).take(5), || {
-        Request::get(addr)
+        let req = Request::get(addr)
             .redirect_policy(RedirectPolicy::Follow)
-            .body(())?
-            .send()
+            .body(())
+            .unwrap();
+        client.send(req).map_err(|e| {
+            error!("{}", e);
+            e
+        })
     })
     .unwrap();
     let resp = response.text()?;
@@ -56,6 +66,7 @@ pub fn push_vox_into_db() -> Result<(), DiffError> {
     // TermLogger::init(LevelFilter::Info, Config::default(), TerminalMode::Mixed).unwrap();
     let conn = establish_connection();
     // Load preexisting data
+    info!("Loading from db");
     let previous_data: Vec<VoxRecord> = get_previous_items(&conn);
     let previous_links: HashMap<LinkRef, (ContentRef, Revision)> = previous_data
         .iter()
@@ -65,10 +76,11 @@ pub fn push_vox_into_db() -> Result<(), DiffError> {
         "Found {} pre-existing articles in the last 3 days",
         previous_data.len()
     );
+    let client = HttpClient::new()?;
     // Scrape main page and get links
-
+    info!("Scraping(rerquest+parsing html)");
     let scraped_links: HashSet<Link> = {
-        let vox = isahc::get(VOX)?.text()?;
+        let vox = client.get(VOX)?.text()?;
         let document = Document::from(vox.as_ref());
         let articles = document.find(Attr("data-analytics-link", "article"));
         let features = document.find(Attr("data-analytics-link", "feature"));
@@ -86,11 +98,12 @@ pub fn push_vox_into_db() -> Result<(), DiffError> {
         .chain(scraped_links.iter().map(|i| i.as_ref()))
         .collect();
     // Request the links
+    info!("Requesting links");
     let records: Vec<LinkContent> = links_to_query
         .par_iter()
         .map(|item| {
             (item.to_string(), {
-                let content = get_content_for_one(item).unwrap();
+                let content = get_content_for_one(item, &client).unwrap();
                 let articles = Document::from(content.as_ref());
                 articles
                     .find(Name("p"))
@@ -108,33 +121,35 @@ pub fn push_vox_into_db() -> Result<(), DiffError> {
         .collect();
     // Out of all the responses
     // 1. Responses not in the previous set -> Form DB entries, insert.
-    let content_first_time_seen: Vec<&LinkContent> = records
+    let content_first_time_seen: Vec<LinkContentRef> = records
         .iter()
-        .filter(|e| !previous_links.contains_key(e.0.as_ref() as &str))
+        .map(|(a, b)| (a.as_ref(), b.as_ref()))
+        .filter(|e: &LinkContentRef| !previous_links.contains_key(e.0.as_ref() as &str))
         .collect();
     info!(
         "Inserting {} novel records in db",
         &content_first_time_seen.len()
     );
-    insert_records_first_seen(&content_first_time_seen, &conn);
+    insert_records_first_seen(content_first_time_seen, &conn);
+    info!("Insertion done");
     // 2.1 Responses in the previous set, content is the same -> Nothing
     // 2.2 Responses in the previous set, content it different  -> revision:prev+1,latest: true. Insert
-    let different_content: Vec<VoxRecord> = records
-        .into_iter()
+    info!("Diffing starts");
+    let different_content: Vec<RefVoxRecord> = records
+        .iter()
         .filter(|e| previous_links.contains_key(e.0.as_ref() as &str))
         .filter(|e| {
             !strings_are_dif_equal(&e.1, previous_links.get(e.0.as_ref() as &str).unwrap().0)
         })
-        .map(|lc| VoxRecord {
-            url: lc.0.clone(),
-            content: lc.1,
+        .map(|lc| RefVoxRecord {
+            url: &lc.0,
+            content: &lc.1,
             revision: previous_links.get(lc.0.as_ref() as &str).unwrap().1 + 1,
         })
         .collect();
     // With 2.2, generate db entries.
     info!("Inserting {} diffed records", different_content.len());
     insert_diff_records_and_update_previous(&different_content, &conn);
-
     info!("Done!");
     Ok(())
 }
