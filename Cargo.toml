@@ -15,7 +15,7 @@ diesel = { version = "1.4", features = ["chrono","postgres"] }
 dotenv = "0.15.0"
 chrono = "0.4.11"
 # colored = "1.9.3"
-serde = { version = "1.0.105", optional = true, features = ["derive"] }
+serde = { version = "1.0.105", features = ["derive"] }
 diff = {path="src/diff"}
 log ="0.4.8"
 url = "2.1.1"

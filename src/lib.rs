@@ -5,19 +5,23 @@ extern crate diesel;
 #[macro_use]
 extern crate log;
 use diff::strings_are_dif_equal;
-
-use db::establish_connection;
-use db::{get_previous_items, insert_diff_records_and_update_previous, insert_records_first_seen};
-use isahc::config::RedirectPolicy;
-use isahc::prelude::*;
+pub mod parser;
+use db::{
+    establish_connection, get_previous_items, insert_diff_records_and_update_previous,
+    insert_records_first_seen,
+};
+use isahc::{config::RedirectPolicy, prelude::*};
+use parser::Target;
 use rayon::prelude::*;
-use retry::delay::jitter;
-use retry::delay::Exponential;
-use retry::retry;
+use retry::{
+    delay::{jitter, Exponential},
+    retry,
+};
 use select::{
     document::Document,
     predicate::{Attr, Class, Name},
 };
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 pub type Link = String;
 pub type LinkRef<'a> = &'a str;
@@ -34,13 +38,20 @@ pub struct RefVoxRecord<'a> {
     pub content: &'a str,
     pub revision: u32,
 }
-const VOX: &str = "https://www.vox.com";
+#[derive(Deserialize, Clone, Debug)]
+pub struct Event {
+    url: String,
+}
 
 pub type DiffError = Box<dyn std::error::Error>;
 type ContentRef<'a> = &'a str;
 type Revision = u32;
 // TODO: Make unwraps more robust, check isahc codes
-fn get_content_for_one(addr: &str, client: &HttpClient) -> Result<String, DiffError> {
+fn get_content_for_one(
+    addr: &str,
+    client: &HttpClient,
+    content_targets: &Vec<Target>,
+) -> Result<String, DiffError> {
     let mut response = retry(Exponential::from_millis(5000).map(jitter).take(5), || {
         let req = Request::get(addr)
             .redirect_policy(RedirectPolicy::Follow)
@@ -54,15 +65,27 @@ fn get_content_for_one(addr: &str, client: &HttpClient) -> Result<String, DiffEr
     .unwrap();
     let resp = response.text()?;
     let document = Document::from(resp.as_ref());
-    let content: String = document
-        .find(Class("c-entry-content"))
-        .map(|v| v.html())
+    let content: String = content_targets
+        .iter()
+        .map(|t| match t {
+            Target::Class { name } => document
+                .find(Class(name.as_ref()))
+                .map(|v| v.html())
+                .collect::<Vec<String>>()
+                .join("\n"),
+            Target::Attr { name, value } => document
+                .find(Attr(name.as_ref(), value.as_ref()))
+                .map(|v| v.html())
+                .collect::<Vec<String>>()
+                .join("\n"),
+        })
         .collect::<Vec<String>>()
-        .join("\n");
+        .join(" ");
+
     Ok(content)
 }
 
-pub fn push_vox_into_db() -> Result<(), DiffError> {
+pub fn push_vox_into_db(event: parser::Request) -> Result<(), DiffError> {
     // TermLogger::init(LevelFilter::Info, Config::default(), TerminalMode::Mixed).unwrap();
     let conn = establish_connection();
     // Load preexisting data
@@ -80,13 +103,22 @@ pub fn push_vox_into_db() -> Result<(), DiffError> {
     // Scrape main page and get links
     info!("Scraping(rerquest+parsing html)");
     let scraped_links: HashSet<Link> = {
-        let vox = client.get(VOX)?.text()?;
-        let document = Document::from(vox.as_ref());
-        let articles = document.find(Attr("data-analytics-link", "article"));
-        let features = document.find(Attr("data-analytics-link", "feature"));
-        articles
-            .chain(features)
-            .map(|c| c.attr("href").unwrap().to_owned())
+        let base = client.get(&event.base_url)?.text()?;
+        let document = Document::from(base.as_ref());
+        event
+            .link_targets
+            .iter()
+            .map(|l| match l {
+                Target::Class { name } => document
+                    .find(Class(name.as_ref()))
+                    .map(|c| c.attr("href").unwrap().to_owned())
+                    .collect::<Vec<Link>>(),
+                Target::Attr { name, value } => document
+                    .find(Attr(name.as_ref(), value.as_ref()))
+                    .map(|c| c.attr("href").unwrap().to_owned())
+                    .collect(),
+            })
+            .flatten()
             .collect()
     };
 
@@ -103,7 +135,7 @@ pub fn push_vox_into_db() -> Result<(), DiffError> {
         .par_iter()
         .map(|item| {
             (item.to_string(), {
-                let content = get_content_for_one(item, &client).unwrap();
+                let content = get_content_for_one(item, &client, &event.content_targets).unwrap();
                 let articles = Document::from(content.as_ref());
                 articles
                     .find(Name("p"))
