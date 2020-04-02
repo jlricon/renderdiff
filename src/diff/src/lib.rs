@@ -39,6 +39,18 @@ impl<'a> From<Chunk<'a>> for OwnedDiff {
 pub struct Difference<'a> {
     pub chunks: Vec<Diff<'a>>,
 }
+/// Returns a difference between two strings
+/// ```
+/// use diff::{Diff,get_diff};
+/// assert_eq!(get_diff("this is","this is").chunks,vec![Diff::Equal("this is")]);
+/// assert_eq!(get_diff("th this is", "not this is a test").chunks,vec![
+///                Diff::Insert("no"),
+///                Diff::Equal("t"),
+///                Diff::Delete("h"),
+///                Diff::Equal(" this is"),
+///                Diff::Insert(" a test")
+///            ]);
+/// ```
 pub fn get_diff<'a>(a: &'a str, b: &'a str) -> Difference<'a> {
     Difference {
         chunks: diff(a, b).into_iter().map(|i| Diff::from(i)).collect(),
@@ -82,23 +94,4 @@ pub fn get_owned_diff(a: &str, b: &str) -> Vec<OwnedDiff> {
             x => x,
         })
         .collect()
-}
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_diff2() {
-        let ret = get_diff("th this is", "not this is a test");
-        assert_eq!(
-            ret.chunks,
-            vec![
-                Diff::Insert("no"),
-                Diff::Equal("t"),
-                Diff::Delete("h"),
-                Diff::Equal(" this is"),
-                Diff::Insert(" a test")
-            ]
-        );
-    }
 }

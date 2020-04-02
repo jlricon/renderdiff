@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 pub enum Target {
     Class { name: String },
     Attr { name: String, value: String },
+    // Like <p>
+    // Name { name: String },
 }
 
 #[derive(Deserialize, Debug, Serialize)]
@@ -57,10 +59,3 @@ mod tests {
         );
     }
 }
-// let vox = client.get(VOX)?.text()?;
-// let document = Document::from(vox.as_ref());
-// let articles = document.find(Attr("data-analytics-link", "article"));
-// let features = document.find(Attr("data-analytics-link", "feature"));
-// articles
-//     .chain(features)
-//     .map(|c| c.attr("href").unwrap().to_owned())

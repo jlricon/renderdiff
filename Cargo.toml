@@ -26,9 +26,11 @@ serde_json = {version="1.0.50"}
 # Needed for Postgres.
 openssl = "*"
 simple_logger = "1.6.0"
+sentry = "0.18.0"
 [dev-dependencies]
 difference = "2.0.0"
 criterion = "0.3.1"
+mockito = "0.23.3"
 [[bench]]
 name = "difference_vs_dissimilar"
 harness = false

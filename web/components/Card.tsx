@@ -22,11 +22,11 @@ function Card({ data }: Props) {
     setData(newData);
   }
   return (
-    <div className="bg-white shadow sm:rounded-lg ml-10 mr-10 max-w-6xl mb-5 justify-center">
-      <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+    <div className="bg-white shadow sm:rounded-lg md:ml-10 ml-2 md:mr-10 mr-2 max-w-6xl mb-5 justify-center">
+      <div className="px-2 md:px-4 py-5 border-b border-gray-200 sm:px-6">
         <h3 className="text-md leading-3 font-medium text-gray-900">
           <div className="flex justify-between">
-            <p>
+            <p className="text-xs md:text-base">
               Previous:{" "}
               {dataState.date_seen1
                 .toISOString()
@@ -40,7 +40,7 @@ function Card({ data }: Props) {
               updateHandler={updateDataAfterSliderIsClicked}
             />
 
-            <p>
+            <p className="text-xs md:text-base">
               Last:{" "}
               {dataState.date_seen2
                 .toISOString()
@@ -51,7 +51,7 @@ function Card({ data }: Props) {
         </h3>
         <p className="mt-1 text-sm leading-5 text-gray-500">
           From{" "}
-          <a className="hover:text-teal-300" href={dataState.url}>
+          <a className="hover:text-teal-300 break-all" href={dataState.url}>
             {dataState.url}
           </a>
         </p>

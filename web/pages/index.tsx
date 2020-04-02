@@ -3,11 +3,29 @@ import { getLatestDiffs, DiffBunch } from "../lib/lib";
 import Card from "../components/Card";
 import { GetServerSideProps, GetStaticProps } from "next";
 import { useState, useEffect } from "react";
+import Dashboard from "../components/Dashboard";
 
 interface LoadMoreInterface {
   isLoaded: boolean;
   handler: (n: number) => Promise<void>;
 }
+const Footer = () => {
+  return (
+    <div className="justify-center text-center pb-10 font-medium text-xs">
+      <a
+        className="pl-2 hover:text-teal-300 "
+        href="https://twitter.com/ArtirKel"
+      >
+        A public service by Jose Luis Ricon
+      </a>{" "}
+      (
+      <a className="hover:text-teal-300 " href="mailto:jose@ricon.xyz">
+        email
+      </a>
+      )
+    </div>
+  );
+};
 const LoadMoreButton = ({ isLoaded, handler }: LoadMoreInterface) => {
   const commonCss =
     "bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-400 rounded shadow w-64";
@@ -43,54 +61,26 @@ function Home({ data }: Props) {
       setAllLoaded(true);
     }
   }
-  // useEffect(() => {
-  //   // Create an scoped async function in the hook
-  //   // async function anyNameFunction() {
-  //   //   await handleButtonClick(10);
-  //   // }
-  //   // // Execute the created function directly
-  //   // anyNameFunction();
-  // }, []);
-  return (
-    <div
-      className="flex flex-col bg-gray-100 h-cover w-cover"
-      style={{ minHeight: "100vh", minWidth: "fit-content" }}
-    >
-      <Head>
-        <title>Commitment</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-      <div className="mx-auto">
-        <h1 className="font-bold  text-4xl md:text-6xl text-center text-gray-800">
-          <a>Commitment</a>
-        </h1>
-        <h2 className="text-sm text-center pb-4">
-          What has been seen cannot be unseen :)
-        </h2>
-        <main>
-          {dataState.map((c, index) => (
-            <Card data={stringToDateBunch(c)} key={index} />
-          ))}
-        </main>
-        <div className="justify-center text-center pb-3">
-          <LoadMoreButton isLoaded={allLoaded} handler={handleButtonClick} />
-        </div>
 
-        <div className="justify-center text-center pb-10 font-medium text-xs">
-          <a
-            className="pl-2 hover:text-teal-300 "
-            href="https://twitter.com/ArtirKel"
-          >
-            A public service by Jose Luis Ricon
-          </a>{" "}
-          (
-          <a className="hover:text-teal-300 " href="mailto:jose@ricon.xyz">
-            email
-          </a>
-          )
+  return (
+    <Dashboard>
+      <div
+        className="flex flex-col h-cover w-cover"
+        // style={{ minHeight: "100vh", minWidth: "fit-content" }}
+      >
+        <div className="mx-auto">
+          <main>
+            {dataState.map((c, index) => (
+              <Card data={stringToDateBunch(c)} key={index} />
+            ))}
+          </main>
+          <div className="justify-center text-center pb-3">
+            <LoadMoreButton isLoaded={allLoaded} handler={handleButtonClick} />
+          </div>
+          <Footer />
         </div>
       </div>
-    </div>
+    </Dashboard>
   );
 }
 

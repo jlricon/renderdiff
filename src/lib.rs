@@ -46,38 +46,50 @@ pub struct Event {
 pub type DiffError = Box<dyn std::error::Error>;
 type ContentRef<'a> = &'a str;
 type Revision = u32;
-// TODO: Make unwraps more robust, check isahc codes
+#[cfg(test)]
+use mockito;
+fn request_with_retry_and_redirect(
+    _addr: &str,
+    client: &HttpClient,
+) -> Result<String, retry::Error<std::io::Error>> {
+    #[cfg(test)]
+    let _addr = &mockito::server_url();
+    retry(Exponential::from_millis(10000).map(jitter).take(10), || {
+        let req = Request::get(_addr)
+            .redirect_policy(RedirectPolicy::Follow)
+            .body(())
+            .unwrap();
+        let mut resp = client.send(req).map_err(|e| {
+            error!("{}", e);
+            e
+        })?;
+        resp.text()
+    })
+}
+fn get_string_from_doc<T: select::predicate::Predicate>(
+    document: &Document,
+    predicate: T,
+) -> String {
+    document
+        .find(predicate)
+        .map(|v| v.html())
+        .collect::<Vec<String>>()
+        .join("\n")
+}
 fn get_content_for_one(
     addr: &str,
     client: &HttpClient,
     content_targets: &Vec<Target>,
 ) -> Result<String, DiffError> {
-    let mut response = retry(Exponential::from_millis(5000).map(jitter).take(5), || {
-        let req = Request::get(addr)
-            .redirect_policy(RedirectPolicy::Follow)
-            .body(())
-            .unwrap();
-        client.send(req).map_err(|e| {
-            error!("{}", e);
-            e
-        })
-    })
-    .unwrap();
-    let resp = response.text()?;
+    let resp = request_with_retry_and_redirect(addr, client).unwrap();
     let document = Document::from(resp.as_ref());
     let content: String = content_targets
         .iter()
         .map(|t| match t {
-            Target::Class { name } => document
-                .find(Class(name.as_ref()))
-                .map(|v| v.html())
-                .collect::<Vec<String>>()
-                .join("\n"),
-            Target::Attr { name, value } => document
-                .find(Attr(name.as_ref(), value.as_ref()))
-                .map(|v| v.html())
-                .collect::<Vec<String>>()
-                .join("\n"),
+            Target::Class { name } => get_string_from_doc(&document, Class(name.as_ref())),
+            Target::Attr { name, value } => {
+                get_string_from_doc(&document, Attr(name.as_ref(), value.as_ref()))
+            } // Target::Name { name } => get_string_from_doc(&document, Name(name.as_ref())),
         })
         .collect::<Vec<String>>()
         .join(" ");
@@ -85,12 +97,11 @@ fn get_content_for_one(
     Ok(content)
 }
 
-pub fn push_vox_into_db(event: parser::Request) -> Result<(), DiffError> {
-    // TermLogger::init(LevelFilter::Info, Config::default(), TerminalMode::Mixed).unwrap();
+pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), DiffError> {
     let conn = establish_connection();
     // Load preexisting data
     info!("Loading from db");
-    let previous_data: Vec<VoxRecord> = get_previous_items(&conn);
+    let previous_data: Vec<VoxRecord> = get_previous_items(&conn, &event.base_url);
     let previous_links: HashMap<LinkRef, (ContentRef, Revision)> = previous_data
         .iter()
         .map(|i| (i.url.as_ref(), (i.content.as_ref(), i.revision)))
@@ -101,9 +112,9 @@ pub fn push_vox_into_db(event: parser::Request) -> Result<(), DiffError> {
     );
     let client = HttpClient::new()?;
     // Scrape main page and get links
-    info!("Scraping(rerquest+parsing html)");
+    info!("Scraping(request+parsing html)");
     let scraped_links: HashSet<Link> = {
-        let base = client.get(&event.base_url)?.text()?;
+        let base = request_with_retry_and_redirect(&event.base_url, &client)?;
         let document = Document::from(base.as_ref());
         event
             .link_targets
@@ -145,8 +156,8 @@ pub fn push_vox_into_db(event: parser::Request) -> Result<(), DiffError> {
             })
         })
         .map(|(link, content)| {
-            if content.is_empty() {
-                warn!("A url was empty: {}", &link);
+            if content.trim().is_empty() {
+                panic!("A url was empty: {}", &link);
             }
             (link, content)
         })
@@ -158,12 +169,21 @@ pub fn push_vox_into_db(event: parser::Request) -> Result<(), DiffError> {
         .map(|(a, b)| (a.as_ref(), b.as_ref()))
         .filter(|e: &LinkContentRef| !previous_links.contains_key(e.0.as_ref() as &str))
         .collect();
-    info!(
-        "Inserting {} novel records in db",
-        &content_first_time_seen.len()
-    );
-    insert_records_first_seen(content_first_time_seen, &conn);
-    info!("Insertion done");
+
+    if dry_run {
+        info!(
+            "Skipping record insertion of {} novel records",
+            content_first_time_seen.len()
+        );
+        debug!("{:?}", &content_first_time_seen);
+    } else {
+        info!(
+            "Inserting {} novel records in db",
+            &content_first_time_seen.len()
+        );
+        insert_records_first_seen(content_first_time_seen, &conn);
+        info!("Insertion done");
+    }
     // 2.1 Responses in the previous set, content is the same -> Nothing
     // 2.2 Responses in the previous set, content it different  -> revision:prev+1,latest: true. Insert
     info!("Diffing starts");
@@ -180,8 +200,86 @@ pub fn push_vox_into_db(event: parser::Request) -> Result<(), DiffError> {
         })
         .collect();
     // With 2.2, generate db entries.
-    info!("Inserting {} diffed records", different_content.len());
-    insert_diff_records_and_update_previous(&different_content, &conn);
+    if dry_run {
+        info!(
+            "Skipping insertion of {} diffed records",
+            different_content.len()
+        );
+    } else {
+        info!("Inserting {} diffed records", different_content.len());
+        insert_diff_records_and_update_previous(&different_content, &conn);
+    }
+
     info!("Done!");
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use mockito::mock;
+    #[test]
+    fn test_get_content_for_one() {
+        let _m = mock("GET", mockito::Matcher::Any)
+            .with_body(r#"<div class="c-entry-content"><p>test</p></div>"#)
+            .create();
+        let client = HttpClient::new().unwrap();
+        let addr = "https://www.test.com/test";
+        let content_targets = vec![Target::Class {
+            name: "c-entry-content".to_owned(),
+        }];
+        let res = get_content_for_one(addr, &client, &content_targets).unwrap();
+        let articles = Document::from(res.as_ref());
+        println!("{}", &res);
+        let res2 = articles
+            .find(Name("p"))
+            .map(|n| n.inner_html())
+            .collect::<Vec<String>>()
+            .join(" ");
+        assert_eq!(res2, "test");
+    }
+    #[test]
+    fn test_scrape_works() {
+        let base = r#"<a href="https://www.vox.com/authors/brian-resnick" data-analytics-link="article"></a>"#;
+        let document = Document::from(base.as_ref());
+        let link_targets = vec![
+            Target::Attr {
+                name: "data-analytics-link".to_owned(),
+                value: "article".to_owned(),
+            },
+            Target::Attr {
+                name: "data-analytics-link".to_owned(),
+                value: "feature".to_owned(),
+            },
+        ];
+        let res: HashSet<Link> = link_targets
+            .iter()
+            .map(|l| match l {
+                Target::Class { name } => document
+                    .find(Class(name.as_ref()))
+                    .map(|c| c.attr("href").unwrap().to_owned())
+                    .collect::<Vec<Link>>(),
+                Target::Attr { name, value } => document
+                    .find(Attr(name.as_ref(), value.as_ref()))
+                    .map(|c| c.attr("href").unwrap().to_owned())
+                    .collect(),
+            })
+            .flatten()
+            .collect();
+        let one = res.iter().nth(0).unwrap();
+        assert_eq!(one, "https://www.vox.com/authors/brian-resnick");
+    }
+    #[test]
+    fn test_retry_works() {
+        let mut bla = 0;
+        fn failfun(bla: &mut i32) -> Result<(), std::io::Error> {
+            dbg!("Run one!");
+            *bla += 1;
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "oh no"))
+        }
+        let _ret = retry(Exponential::from_millis(1).map(jitter).take(5), || {
+            failfun(&mut bla)
+        });
+        assert_eq!(bla, 6)
+    }
 }

@@ -1,7 +1,9 @@
 use lambda_runtime::{error::HandlerError, lambda, Context};
 use log::info;
 use renderdiff::push_vox_into_db;
+use sentry;
 use simple_logger;
+use std::env;
 fn main() {
     lambda!(handler)
 }
@@ -24,6 +26,7 @@ fn handler(event: renderdiff::parser::Request, _ctx: Context) -> Result<(), Hand
     unsafe {
         LOGGER.start_logging();
     }
+    let _guard = sentry::init(env::var("SENTRY_URL").unwrap());
     info!("{:?}", event);
-    Ok(push_vox_into_db(event).unwrap())
+    Ok(push_vox_into_db(event, false).unwrap())
 }

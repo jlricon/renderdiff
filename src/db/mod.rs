@@ -16,14 +16,16 @@ pub fn establish_connection() -> PgConnection {
 }
 /// We get the items that we have seen in the db previously
 /// Only interested in stuff more recent than 3 days(We assume they don't change articles that far back)
-pub fn get_previous_items(conn: &PgConnection) -> Vec<VoxRecord> {
+pub fn get_previous_items(conn: &PgConnection, base_url: &str) -> Vec<VoxRecord> {
     use schema::vox_records::dsl::*;
+    let base_url_root = Url::parse(base_url).unwrap().host_str().unwrap().to_owned();
     let two_days_ago = Utc::now()
         .naive_utc()
         .checked_sub_signed(Duration::days(LOOKBACK_PERIOD))
         .unwrap();
     vox_records
         .filter(latest.eq(true))
+        .filter(site.eq(base_url_root))
         .filter(date_seen.ge(two_days_ago))
         .load::<VoxDbRecord>(conn)
         .unwrap()

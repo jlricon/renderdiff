@@ -21,7 +21,7 @@ export const RevisionButton = ({
   }, {});
 
   return (
-    <div style={st} className="pb-4 flex-col">
+    <div style={st} className="pb-4 flex-col text-xs md:text-base pr-4">
       <p className="pb-2 text-center">Revision</p>
       <Range
         allowCross={false}

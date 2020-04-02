@@ -49,8 +49,7 @@ export async function getLatestDiffs(
     d.date_seen2 = Date.parse(d.date_seen2 as string);
   });
   let resp2 = resp as LastDiffs<number>;
-  resp2.data = resp2.data.sort((a, b) => b.date_seen1 - a.date_seen1);
-  console.log(resp2);
+  resp2.data = resp2.data.sort((a, b) => b.date_seen2 - a.date_seen2);
   return resp2 as LastDiffs<number>;
 }
 interface DiffTwoReturn {
@@ -75,6 +74,5 @@ export async function getDiffsForTwo(
     },
     body: JSON.stringify(req)
   }).then(e => e.json());
-  console.log(resp);
   return resp.data;
 }
