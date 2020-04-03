@@ -34,17 +34,17 @@ export async function getLatestDiffs(
 ): Promise<LastDiffs<number>> {
   const req: WorkerRequestLastDiffs = {
     kind: "last_diffs",
-    params: { n: n, offset: offset }
+    params: { n: n, offset: offset },
   };
   let resp: LastDiffs<string | number> = await fetch(HOST, {
     method: "POST",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(req)
-  }).then(e => e.json());
-  resp.data.map(d => {
+    body: JSON.stringify(req),
+  }).then((e) => e.json());
+  resp.data.map((d) => {
     d.date_seen1 = Date.parse(d.date_seen1 as string);
     d.date_seen2 = Date.parse(d.date_seen2 as string);
   });
@@ -64,15 +64,15 @@ export async function getDiffsForTwo(
 ): Promise<DiffTwoReturn> {
   const req = {
     kind: "diff_two",
-    params: { url: url, v1: rev1, v2: rev2 }
+    params: { url: url, v1: rev1, v2: rev2 },
   };
   let resp = await fetch(HOST, {
     method: "POST",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(req)
-  }).then(e => e.json());
+    body: JSON.stringify(req),
+  }).then((e) => e.json());
   return resp.data;
 }

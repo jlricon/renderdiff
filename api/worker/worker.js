@@ -37,10 +37,10 @@ async function handle(event) {
       const was = wasm_bindgen;
       await wasm_bindgen(wasm);
       response = await handlePost(request, was);
-      // if (response.ok) {
-      //   response.headers.append("Cache-Control", "max-age=60");
-      //   event.waitUntil(cache.put(cacheKey, response.clone()));
-      // }
+      if (response.ok) {
+        response.headers.append("Cache-Control", "max-age=1800");
+        event.waitUntil(cache.put(cacheKey, response.clone()));
+      }
     } else {
     }
     return response;

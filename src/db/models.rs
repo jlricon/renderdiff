@@ -9,6 +9,7 @@ pub struct VoxDbRecord {
     pub revision: i32,
     pub latest: bool,
     pub site: String,
+    pub id: i32,
 }
 #[derive(Insertable)]
 #[table_name = "vox_records"]

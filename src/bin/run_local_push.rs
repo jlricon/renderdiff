@@ -3,6 +3,7 @@ use log::info;
 use renderdiff::parser::Request;
 use renderdiff::parser::Target;
 use renderdiff::push_vox_into_db;
+use serde_json::to_string_pretty;
 use simple_logger;
 struct InitServices {
     logger_is_on: bool,
@@ -25,21 +26,15 @@ fn main() {
     }
     dotenv::dotenv().ok();
     let event = Request {
-        base_url: "http://www.vox.com".to_owned(),
-        link_targets: vec![
-            Target::Attr {
-                name: "data-analytics-link".to_owned(),
-                value: "article".to_owned(),
-            },
-            Target::Attr {
-                name: "data-analytics-link".to_owned(),
-                value: "feature".to_owned(),
-            },
-        ],
+        base_url: "http://www.slatestarcodex.com".to_owned(),
+        link_targets: vec![Target::Attr {
+            value: "bookmark".to_owned(),
+            name: "rel".to_owned(),
+        }],
         content_targets: vec![Target::Class {
-            name: "c-entry-content".to_owned(),
+            name: "pjgm-postcontent".to_owned(),
         }],
     };
-    info!("{:?}", event);
-    push_vox_into_db(event, true).unwrap()
+    info!("{}", to_string_pretty(&event).unwrap());
+    push_vox_into_db(event, false).unwrap()
 }

@@ -1,10 +1,8 @@
-import Head from "next/head";
-import { getLatestDiffs, DiffBunch } from "../lib/lib";
+import { getLatestDiffs, DiffBunch, Diff } from "../lib/lib";
 import Card from "../components/Card";
-import { GetServerSideProps, GetStaticProps } from "next";
+// import { GetServerSideProps, GetStaticProps } from "next";
 import { useState, useEffect } from "react";
 import Dashboard from "../components/Dashboard";
-
 interface LoadMoreInterface {
   isLoaded: boolean;
   handler: (n: number) => Promise<void>;
@@ -31,7 +29,7 @@ const LoadMoreButton = ({ isLoaded, handler }: LoadMoreInterface) => {
     "bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-400 rounded shadow w-64";
   if (!isLoaded) {
     return (
-      <button className={commonCss} onClick={event => handler(5)}>
+      <button className={commonCss} onClick={(event) => handler(5)}>
         Load 5 more
       </button>
     );
@@ -47,8 +45,9 @@ interface Props {
   data: DiffBunch<number>[];
 }
 function Home({ data }: Props) {
-  const [dataState, setData] = useState(data);
-  const [loadedN, setLoadedN] = useState(data.length);
+  const empty = [] as DiffBunch<number>[];
+  const [dataState, setData] = useState(empty);
+  const [loadedN, setLoadedN] = useState(dataState.length);
   const [allLoaded, setAllLoaded] = useState(false);
   async function handleButtonClick(n: number) {
     const newData = await getLatestDiffs(n, loadedN);
@@ -61,7 +60,14 @@ function Home({ data }: Props) {
       setAllLoaded(true);
     }
   }
-
+  useEffect(() => {
+    // Create an scoped async function in the hook
+    async function anyNameFunction() {
+      await handleButtonClick(10);
+    }
+    // Execute the created function directly
+    anyNameFunction();
+  }, []);
   return (
     <Dashboard>
       <div
@@ -86,10 +92,10 @@ function Home({ data }: Props) {
 
 export default Home;
 
-export const getServerSideProps: GetServerSideProps = async ctx => {
-  const data = await getLatestDiffs(10, 0);
-  return { props: { data: data.data } };
-};
+// export const getServerSideProps: GetServerSideProps = async (ctx) => {
+//   const data = await getLatestDiffs(10, 0);
+//   return { props: { data: data.data } };
+// };
 function stringToDateBunch(x: DiffBunch<number>): DiffBunch<Date> {
   return {
     diff: x.diff,
@@ -97,6 +103,6 @@ function stringToDateBunch(x: DiffBunch<number>): DiffBunch<Date> {
     prev_revision: x.prev_revision,
     url: x.url,
     date_seen1: new Date(x.date_seen1),
-    date_seen2: new Date(x.date_seen2)
+    date_seen2: new Date(x.date_seen2),
   };
 }

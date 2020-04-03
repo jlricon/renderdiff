@@ -19,6 +19,7 @@ pub fn establish_connection() -> PgConnection {
 pub fn get_previous_items(conn: &PgConnection, base_url: &str) -> Vec<VoxRecord> {
     use schema::vox_records::dsl::*;
     let base_url_root = Url::parse(base_url).unwrap().host_str().unwrap().to_owned();
+    dbg!(&base_url_root);
     let two_days_ago = Utc::now()
         .naive_utc()
         .checked_sub_signed(Duration::days(LOOKBACK_PERIOD))
@@ -37,7 +38,11 @@ pub fn get_previous_items(conn: &PgConnection, base_url: &str) -> Vec<VoxRecord>
         })
         .collect()
 }
-pub fn insert_records_first_seen(records: Vec<LinkContentRef>, conn: &PgConnection) {
+pub fn insert_records_first_seen(
+    records: Vec<LinkContentRef>,
+    conn: &PgConnection,
+    base_url: &str,
+) {
     let insertables: Vec<InsertableVoxDbRecord> = records
         .iter()
         .map(|i| InsertableVoxDbRecord {
@@ -46,7 +51,7 @@ pub fn insert_records_first_seen(records: Vec<LinkContentRef>, conn: &PgConnecti
             date_seen: Utc::now().naive_utc(),
             revision: 1,
             latest: true,
-            site: Url::parse(&i.0).unwrap().host_str().unwrap().to_owned(),
+            site: Url::parse(base_url).unwrap().host_str().unwrap().to_owned(),
         })
         .collect();
     diesel::insert_into(vox_records::table)
@@ -55,7 +60,11 @@ pub fn insert_records_first_seen(records: Vec<LinkContentRef>, conn: &PgConnecti
         .unwrap();
 }
 use diesel::result::Error;
-pub fn insert_diff_records_and_update_previous(records: &Vec<RefVoxRecord>, conn: &PgConnection) {
+pub fn insert_diff_records_and_update_previous(
+    records: &Vec<RefVoxRecord>,
+    conn: &PgConnection,
+    base_url: &str,
+) {
     use schema::vox_records::dsl::{latest, url};
     let existing_urls: HashSet<LinkRef> = records.iter().map(|i| i.url.as_ref()).collect();
     let insertables: Vec<InsertableVoxDbRecord> = records
@@ -66,7 +75,7 @@ pub fn insert_diff_records_and_update_previous(records: &Vec<RefVoxRecord>, conn
             date_seen: Utc::now().naive_utc(),
             revision: i.revision as i32,
             latest: true,
-            site: Url::parse(i.url).unwrap().host_str().unwrap().to_owned(),
+            site: Url::parse(base_url).unwrap().host_str().unwrap().to_owned(),
         })
         .collect();
     conn.transaction::<usize, Error, _>(|| {
@@ -80,24 +89,24 @@ pub fn insert_diff_records_and_update_previous(records: &Vec<RefVoxRecord>, conn
     })
     .unwrap();
 }
-pub fn get_diff_records_from_db(
-    revision1: u32,
-    revision2: u32,
-    input_url: &str,
-    conn: &PgConnection,
-) -> Vec<VoxRecord> {
-    use schema::vox_records::dsl::*;
+// pub fn get_diff_records_from_db(
+//     revision1: u32,
+//     revision2: u32,
+//     input_url: &str,
+//     conn: &PgConnection,
+// ) -> Vec<VoxRecord> {
+//     use schema::vox_records::dsl::*;
 
-    vox_records
-        .filter(revision.eq_any(vec![revision1 as i32, revision2 as i32]))
-        .filter(url.eq(input_url))
-        .load::<VoxDbRecord>(conn)
-        .unwrap()
-        .into_iter()
-        .map(|r| VoxRecord {
-            url: r.url,
-            content: r.content.clone(),
-            revision: r.revision as u32,
-        })
-        .collect()
-}
+//     vox_records
+//         .filter(revision.eq_any(vec![revision1 as i32, revision2 as i32]))
+//         .filter(url.eq(input_url))
+//         .load::<VoxDbRecord>(conn)
+//         .unwrap()
+//         .into_iter()
+//         .map(|r| VoxRecord {
+//             url: r.url,
+//             content: r.content.clone(),
+//             revision: r.revision as u32,
+//         })
+//         .collect()
+// }

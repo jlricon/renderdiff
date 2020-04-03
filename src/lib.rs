@@ -181,7 +181,7 @@ pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), Dif
             "Inserting {} novel records in db",
             &content_first_time_seen.len()
         );
-        insert_records_first_seen(content_first_time_seen, &conn);
+        insert_records_first_seen(content_first_time_seen, &conn, &event.base_url);
         info!("Insertion done");
     }
     // 2.1 Responses in the previous set, content is the same -> Nothing
@@ -207,7 +207,7 @@ pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), Dif
         );
     } else {
         info!("Inserting {} diffed records", different_content.len());
-        insert_diff_records_and_update_previous(&different_content, &conn);
+        insert_diff_records_and_update_previous(&different_content, &conn, &event.base_url);
     }
 
     info!("Done!");

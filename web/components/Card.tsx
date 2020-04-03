@@ -16,7 +16,7 @@ function Card({ data }: Props) {
       prev_revision: rev1,
       url: dataState.url,
       date_seen1: new Date(resp.date_rev1),
-      date_seen2: new Date(resp.date_rev2)
+      date_seen2: new Date(resp.date_rev2),
     };
 
     setData(newData);
