@@ -1,4 +1,5 @@
 import Head from "next/head";
+import Link from "next/link";
 
 interface Props {}
 function Dashboard({ children }: React.PropsWithChildren<Props>) {
@@ -21,7 +22,9 @@ function Dashboard({ children }: React.PropsWithChildren<Props>) {
               </div>
               <div className="mx-auto py-6 px-4 sm:px-6 lg:px-8">
                 <h1 className="text-3xl font-bold leading-tight text-teal-200">
-                  Commitment
+                  <Link href="/">
+                    <a>Commitment</a>
+                  </Link>
                 </h1>
               </div>
               {/* <h2 className="text-sm text-center text-teal-300 align-baseline">

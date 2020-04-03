@@ -29,7 +29,6 @@ export default Search;
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { url, rev1, rev2 } = ctx.query;
-  console.log(ctx.query);
   const data = await getDiffsForTwo(
     url as string,
     parseInt(rev1 as string),
