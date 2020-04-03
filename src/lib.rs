@@ -273,7 +273,6 @@ mod test {
     fn test_retry_works() {
         let mut bla = 0;
         fn failfun(bla: &mut i32) -> Result<(), std::io::Error> {
-            dbg!("Run one!");
             *bla += 1;
             Err(std::io::Error::new(std::io::ErrorKind::Other, "oh no"))
         }
