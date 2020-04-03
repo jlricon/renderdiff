@@ -54,8 +54,8 @@ export async function getLatestDiffs(
 }
 interface DiffTwoReturn {
   diff: DiffDict[];
-  date_rev1: string;
-  date_rev2: string;
+  date_rev1: number;
+  date_rev2: number;
 }
 export async function getDiffsForTwo(
   url: string,
@@ -74,5 +74,19 @@ export async function getDiffsForTwo(
     },
     body: JSON.stringify(req),
   }).then((e) => e.json());
-  return resp.data;
+
+  resp.date_rev1 = Date.parse(resp.date_rev1 as string);
+  resp.date_rev2 = Date.parse(resp.date_rev2 as string);
+  const resp2: DiffTwoReturn = resp.data;
+  return resp2;
+}
+export function stringToDateBunch(x: DiffBunch<number>): DiffBunch<Date> {
+  return {
+    diff: x.diff,
+    last_revision: x.last_revision,
+    prev_revision: x.prev_revision,
+    url: x.url,
+    date_seen1: new Date(x.date_seen1),
+    date_seen2: new Date(x.date_seen2),
+  };
 }

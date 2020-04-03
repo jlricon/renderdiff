@@ -7,7 +7,7 @@ interface Props {
 }
 function Card({ data }: Props) {
   const [dataState, setData] = useState(data);
-  const [lastRevision, setLastRevision] = useState(data.last_revision);
+  const [lastRevision] = useState(data.last_revision);
   async function updateDataAfterSliderIsClicked(rev1: number, rev2: number) {
     const resp = await getDiffsForTwo(dataState.url, rev1, rev2);
     const newData: DiffBunch<Date> = {
@@ -54,6 +54,17 @@ function Card({ data }: Props) {
           <a className="hover:text-teal-300 break-all" href={dataState.url}>
             {dataState.url}
           </a>
+          <div className="inline ml-3">
+            (
+            <a
+              className="inline-flex text-teal-400"
+              href={`https://commitment.now.sh/search?url=${dataState.url}&rev1=${dataState.prev_revision}&rev2=${dataState.last_revision}`}
+            >
+              Permalink{" "}
+              <img className="h-2 w-2" src="/link.svg" alt="Permalink" />
+            </a>
+            )
+          </div>
         </p>
       </div>
 
