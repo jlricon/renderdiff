@@ -19,7 +19,6 @@ pub fn establish_connection() -> PgConnection {
 pub fn get_previous_items(conn: &PgConnection, base_url: &str) -> Vec<VoxRecord> {
     use schema::vox_records::dsl::*;
     let base_url_root = Url::parse(base_url).unwrap().host_str().unwrap().to_owned();
-    dbg!(&base_url_root);
     let two_days_ago = Utc::now()
         .naive_utc()
         .checked_sub_signed(Duration::days(LOOKBACK_PERIOD))
