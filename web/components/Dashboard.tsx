@@ -1,8 +1,16 @@
 import Head from "next/head";
 import Link from "next/link";
-
+import ReactGA from "react-ga";
+import { useEffect } from "react";
+function initGa() {
+  ReactGA.initialize("UA-4255500-4");
+  ReactGA.pageview(window.location.pathname + window.location.search);
+}
 interface Props {}
 function Dashboard({ children }: React.PropsWithChildren<Props>) {
+  useEffect(() => {
+    initGa();
+  }, []);
   return (
     <>
       <Head>

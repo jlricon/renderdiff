@@ -56,13 +56,17 @@ pub fn get_diff<'a>(a: &'a str, b: &'a str) -> Difference<'a> {
         chunks: diff(a, b).into_iter().map(|i| Diff::from(i)).collect(),
     }
 }
+
 pub fn strings_are_dif_equal<'a>(a: &'a str, b: &'a str) -> bool {
     // If all strings are equal and we filter them out, count=0
     diff(a, b)
         .iter()
         .filter(|m| match m {
             Chunk::Equal(_) => false,
-            _ => true,
+            Chunk::Delete(e) | Chunk::Insert(e) => {
+                println!("{}", e);
+                true
+            }
         })
         .count()
         == 0

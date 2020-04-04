@@ -2,6 +2,7 @@ use lambda_runtime::{error::HandlerError, lambda, Context};
 use log::info;
 use renderdiff::push_vox_into_db;
 use sentry;
+use sentry::integrations::panic::register_panic_handler;
 use simple_logger;
 use std::env;
 fn main() {
@@ -22,11 +23,16 @@ static mut LOGGER: InitServices = InitServices {
     logger_is_on: false,
 };
 
-fn handler(event: renderdiff::parser::Request, _ctx: Context) -> Result<(), HandlerError> {
+fn handler(
+    event: renderdiff::parser::types::SerializableScrapingCondition,
+    _ctx: Context,
+) -> Result<(), HandlerError> {
     unsafe {
         LOGGER.start_logging();
     }
     let _guard = sentry::init(env::var("SENTRY_URL").unwrap());
+    sentry::capture_message(&format!("Got event {:?}", &event), sentry::Level::Info);
+    register_panic_handler();
     info!("{:?}", event);
-    Ok(push_vox_into_db(event, false).unwrap())
+    Ok(push_vox_into_db(event.into(), false).unwrap())
 }

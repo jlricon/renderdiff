@@ -11,18 +11,15 @@ use db::{
     insert_records_first_seen,
 };
 use isahc::{config::RedirectPolicy, prelude::*};
-use parser::Target;
 use rayon::prelude::*;
 use retry::{
     delay::{jitter, Exponential},
     retry,
 };
-use select::{
-    document::Document,
-    predicate::{Attr, Class, Name},
-};
+
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use url::Url;
 pub type Link = String;
 pub type LinkRef<'a> = &'a str;
 type Content = String;
@@ -49,88 +46,71 @@ type Revision = u32;
 #[cfg(test)]
 use mockito;
 fn request_with_retry_and_redirect(
-    _addr: &str,
+    _addr: &Url,
     client: &HttpClient,
 ) -> Result<String, retry::Error<std::io::Error>> {
     #[cfg(test)]
     let _addr = &mockito::server_url();
-    retry(Exponential::from_millis(10000).map(jitter).take(10), || {
-        let req = Request::get(_addr)
+    retry(Exponential::from_millis(1000).map(jitter).take(5), || {
+        let req = Request::get(_addr.to_string())
             .redirect_policy(RedirectPolicy::Follow)
             .body(())
             .unwrap();
-        let mut resp = client.send(req).map_err(|e| {
-            error!("{}", e);
-            e
-        })?;
-        resp.text()
+        let mut response = client.send(req).unwrap();
+        // Validate response
+        let text = response.text().unwrap();
+        if text.len() < 20 {
+            warn!("{}", &text);
+        }
+
+        if text == "Slow down\n" {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "We were told to slow down :(",
+            ))
+        } else {
+            Ok(text)
+        }
     })
 }
-fn get_string_from_doc<T: select::predicate::Predicate>(
-    document: &Document,
-    predicate: T,
-) -> String {
-    document
-        .find(predicate)
-        .map(|v| v.html())
-        .collect::<Vec<String>>()
-        .join("\n")
-}
+
 fn get_content_for_one(
     addr: &str,
     client: &HttpClient,
-    content_targets: &Vec<Target>,
+    content_targets: &parser::types::ContentScrapingCondition,
 ) -> Result<String, DiffError> {
-    let resp = request_with_retry_and_redirect(addr, client).unwrap();
-    let document = Document::from(resp.as_ref());
-    let content: String = content_targets
-        .iter()
-        .map(|t| match t {
-            Target::Class { name } => get_string_from_doc(&document, Class(name.as_ref())),
-            Target::Attr { name, value } => {
-                get_string_from_doc(&document, Attr(name.as_ref(), value.as_ref()))
-            } // Target::Name { name } => get_string_from_doc(&document, Name(name.as_ref())),
-        })
-        .collect::<Vec<String>>()
-        .join(" ");
-
-    Ok(content)
+    let resp = request_with_retry_and_redirect(&Url::parse(addr)?, client).unwrap();
+    // Validate response
+    let parsed = parser::scrape_inner(&resp, content_targets);
+    if parsed.is_none() {
+        panic!("Failed to parse {}", addr);
+    }
+    Ok(parsed.unwrap())
 }
 
-pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), DiffError> {
+pub fn push_vox_into_db(
+    event: parser::types::ScrapingCondition,
+    dry_run: bool,
+) -> Result<(), DiffError> {
     let conn = establish_connection();
+    let base_url = &event.base_url;
     // Load preexisting data
     info!("Loading from db");
-    let previous_data: Vec<VoxRecord> = get_previous_items(&conn, &event.base_url);
+    let previous_data: Vec<VoxRecord> = get_previous_items(&conn, base_url);
     let previous_links: HashMap<LinkRef, (ContentRef, Revision)> = previous_data
         .iter()
         .map(|i| (i.url.as_ref(), (i.content.as_ref(), i.revision)))
         .collect();
     info!(
-        "Found {} pre-existing articles in the last 3 days",
+        "Found {} pre-existing articles in the last 90 days",
         previous_data.len()
     );
     let client = HttpClient::new()?;
     // Scrape main page and get links
     info!("Scraping(request+parsing html)");
     let scraped_links: HashSet<Link> = {
-        let base = request_with_retry_and_redirect(&event.base_url, &client)?;
-        let document = Document::from(base.as_ref());
-        event
-            .link_targets
-            .iter()
-            .map(|l| match l {
-                Target::Class { name } => document
-                    .find(Class(name.as_ref()))
-                    .map(|c| c.attr("href").unwrap().to_owned())
-                    .collect::<Vec<Link>>(),
-                Target::Attr { name, value } => document
-                    .find(Attr(name.as_ref(), value.as_ref()))
-                    .map(|c| c.attr("href").unwrap().to_owned())
-                    .collect(),
-            })
-            .flatten()
-            .collect()
+        let base = request_with_retry_and_redirect(base_url, &client)?;
+        parser::scrape_links(&base, &event.links, base_url).unwrap()
     };
 
     info!("{} links scraped", &scraped_links.len());
@@ -146,13 +126,8 @@ pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), Dif
         .par_iter()
         .map(|item| {
             (item.to_string(), {
-                let content = get_content_for_one(item, &client, &event.content_targets).unwrap();
-                let articles = Document::from(content.as_ref());
-                articles
-                    .find(Name("p"))
-                    .map(|n| n.inner_html())
-                    .collect::<Vec<String>>()
-                    .join(" ")
+                get_content_for_one(item, &client, &event.content).unwrap()
+                // Maybe trim to the <p> here?
             })
         })
         .map(|(link, content)| {
@@ -181,14 +156,14 @@ pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), Dif
             "Inserting {} novel records in db",
             &content_first_time_seen.len()
         );
-        insert_records_first_seen(content_first_time_seen, &conn, &event.base_url);
+        insert_records_first_seen(content_first_time_seen, &conn, &base_url);
         info!("Insertion done");
     }
     // 2.1 Responses in the previous set, content is the same -> Nothing
     // 2.2 Responses in the previous set, content it different  -> revision:prev+1,latest: true. Insert
     info!("Diffing starts");
     let different_content: Vec<RefVoxRecord> = records
-        .iter()
+        .par_iter()
         .filter(|e| previous_links.contains_key(e.0.as_ref() as &str))
         .filter(|e| {
             !strings_are_dif_equal(&e.1, previous_links.get(e.0.as_ref() as &str).unwrap().0)
@@ -207,7 +182,7 @@ pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), Dif
         );
     } else {
         info!("Inserting {} diffed records", different_content.len());
-        insert_diff_records_and_update_previous(&different_content, &conn, &event.base_url);
+        insert_diff_records_and_update_previous(&different_content, &conn, &base_url);
     }
 
     info!("Done!");
@@ -217,58 +192,7 @@ pub fn push_vox_into_db(event: parser::Request, dry_run: bool) -> Result<(), Dif
 #[cfg(test)]
 mod test {
     use super::*;
-    use mockito::mock;
-    #[test]
-    fn test_get_content_for_one() {
-        let _m = mock("GET", mockito::Matcher::Any)
-            .with_body(r#"<div class="c-entry-content"><p>test</p></div>"#)
-            .create();
-        let client = HttpClient::new().unwrap();
-        let addr = "https://www.test.com/test";
-        let content_targets = vec![Target::Class {
-            name: "c-entry-content".to_owned(),
-        }];
-        let res = get_content_for_one(addr, &client, &content_targets).unwrap();
-        let articles = Document::from(res.as_ref());
-        println!("{}", &res);
-        let res2 = articles
-            .find(Name("p"))
-            .map(|n| n.inner_html())
-            .collect::<Vec<String>>()
-            .join(" ");
-        assert_eq!(res2, "test");
-    }
-    #[test]
-    fn test_scrape_works() {
-        let base = r#"<a href="https://www.vox.com/authors/brian-resnick" data-analytics-link="article"></a>"#;
-        let document = Document::from(base.as_ref());
-        let link_targets = vec![
-            Target::Attr {
-                name: "data-analytics-link".to_owned(),
-                value: "article".to_owned(),
-            },
-            Target::Attr {
-                name: "data-analytics-link".to_owned(),
-                value: "feature".to_owned(),
-            },
-        ];
-        let res: HashSet<Link> = link_targets
-            .iter()
-            .map(|l| match l {
-                Target::Class { name } => document
-                    .find(Class(name.as_ref()))
-                    .map(|c| c.attr("href").unwrap().to_owned())
-                    .collect::<Vec<Link>>(),
-                Target::Attr { name, value } => document
-                    .find(Attr(name.as_ref(), value.as_ref()))
-                    .map(|c| c.attr("href").unwrap().to_owned())
-                    .collect(),
-            })
-            .flatten()
-            .collect();
-        let one = res.iter().nth(0).unwrap();
-        assert_eq!(one, "https://www.vox.com/authors/brian-resnick");
-    }
+
     #[test]
     fn test_retry_works() {
         let mut bla = 0;
@@ -281,4 +205,25 @@ mod test {
         });
         assert_eq!(bla, 6)
     }
+}
+/// This fixes a relative link to a potential URL
+pub fn fix_malformed_url(x: &str, base_url: &Url) -> String {
+    // Links that have fragments can be treated as the same link, as they don't affect checking
+    base_url.join(x).unwrap().to_string()
+}
+#[test]
+fn test_fix_malformed_url() {
+    let base_url = Url::parse("https://test.com/").unwrap();
+    assert_eq!(
+        fix_malformed_url("http://test.com", &base_url),
+        "http://test.com/".to_owned()
+    );
+    assert_eq!(
+        fix_malformed_url("//test2.com", &base_url),
+        "https://test2.com/".to_owned()
+    );
+    assert_eq!(
+        fix_malformed_url("/subsite", &base_url),
+        "https://test.com/subsite".to_owned()
+    );
 }

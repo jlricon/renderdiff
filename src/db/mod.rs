@@ -16,9 +16,9 @@ pub fn establish_connection() -> PgConnection {
 }
 /// We get the items that we have seen in the db previously
 /// Only interested in stuff more recent than 3 days(We assume they don't change articles that far back)
-pub fn get_previous_items(conn: &PgConnection, base_url: &str) -> Vec<VoxRecord> {
+pub fn get_previous_items(conn: &PgConnection, base_url: &Url) -> Vec<VoxRecord> {
     use schema::vox_records::dsl::*;
-    let base_url_root = Url::parse(base_url).unwrap().host_str().unwrap().to_owned();
+    let base_url_root = base_url.host_str().unwrap().to_owned();
     let two_days_ago = Utc::now()
         .naive_utc()
         .checked_sub_signed(Duration::days(LOOKBACK_PERIOD))
@@ -40,7 +40,7 @@ pub fn get_previous_items(conn: &PgConnection, base_url: &str) -> Vec<VoxRecord>
 pub fn insert_records_first_seen(
     records: Vec<LinkContentRef>,
     conn: &PgConnection,
-    base_url: &str,
+    base_url: &Url,
 ) {
     let insertables: Vec<InsertableVoxDbRecord> = records
         .iter()
@@ -50,7 +50,7 @@ pub fn insert_records_first_seen(
             date_seen: Utc::now().naive_utc(),
             revision: 1,
             latest: true,
-            site: Url::parse(base_url).unwrap().host_str().unwrap().to_owned(),
+            site: base_url.host_str().unwrap().to_owned(),
         })
         .collect();
     diesel::insert_into(vox_records::table)
@@ -62,7 +62,7 @@ use diesel::result::Error;
 pub fn insert_diff_records_and_update_previous(
     records: &Vec<RefVoxRecord>,
     conn: &PgConnection,
-    base_url: &str,
+    base_url: &Url,
 ) {
     use schema::vox_records::dsl::{latest, url};
     let existing_urls: HashSet<LinkRef> = records.iter().map(|i| i.url.as_ref()).collect();
@@ -74,7 +74,7 @@ pub fn insert_diff_records_and_update_previous(
             date_seen: Utc::now().naive_utc(),
             revision: i.revision as i32,
             latest: true,
-            site: Url::parse(base_url).unwrap().host_str().unwrap().to_owned(),
+            site: base_url.host_str().unwrap().to_owned(),
         })
         .collect();
     conn.transaction::<usize, Error, _>(|| {

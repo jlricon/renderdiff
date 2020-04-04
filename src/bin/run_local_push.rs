@@ -1,9 +1,9 @@
 use dotenv;
 use log::info;
-use renderdiff::parser::Request;
-use renderdiff::parser::Target;
+use rayon;
+use renderdiff::parser::types::*;
 use renderdiff::push_vox_into_db;
-use serde_json::to_string_pretty;
+use serde_json;
 use simple_logger;
 struct InitServices {
     logger_is_on: bool,
@@ -24,17 +24,22 @@ fn main() {
     unsafe {
         LOGGER.start_logging();
     }
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(3)
+        .build_global()
+        .unwrap();
     dotenv::dotenv().ok();
-    let event = Request {
-        base_url: "http://www.slatestarcodex.com".to_owned(),
-        link_targets: vec![Target::Attr {
-            value: "bookmark".to_owned(),
-            name: "rel".to_owned(),
-        }],
-        content_targets: vec![Target::Class {
-            name: "pjgm-postcontent".to_owned(),
-        }],
+    let event = SerializableScrapingCondition {
+        base_url: "http://slatestarcodex.com".to_owned(),
+        links: SerializableLinkScrapingCondition {
+            selector: r#"h2.pjgm-posttitle > a"#.to_owned(),
+            href_regex: ".+".to_owned(),
+            href_regex_exclude: None,
+        },
+        content: SerializableContentScrapingCondition {
+            selectors: vec!["div.pjgm-postcontent".to_owned()],
+        },
     };
-    info!("{}", to_string_pretty(&event).unwrap());
-    push_vox_into_db(event, false).unwrap()
+    info!("{}", serde_json::to_string(&event).unwrap());
+    push_vox_into_db(event.into(), false).unwrap()
 }

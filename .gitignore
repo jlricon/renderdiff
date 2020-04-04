@@ -10,3 +10,4 @@ node_modules/
 .serverless
 go_db/
 lambda.zip
+web/package-lock.json
