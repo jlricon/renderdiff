@@ -11,3 +11,4 @@ node_modules/
 go_db/
 lambda.zip
 web/package-lock.json
+build.sh

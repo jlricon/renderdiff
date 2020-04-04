@@ -30,14 +30,19 @@ fn main() {
         .unwrap();
     dotenv::dotenv().ok();
     let event = SerializableScrapingCondition {
-        base_url: "http://slatestarcodex.com".to_owned(),
+        base_url: "https://www.bbc.co.uk/news".to_owned(),
         links: SerializableLinkScrapingCondition {
-            selector: r#"h2.pjgm-posttitle > a"#.to_owned(),
-            href_regex: ".+".to_owned(),
-            href_regex_exclude: None,
+            selector: r#"a.nw-o-link-split__anchor"#.to_owned(),
+            href_regex: "/news".to_owned(),
+            href_regex_exclude: Some("/live".to_owned()),
         },
         content: SerializableContentScrapingCondition {
-            selectors: vec!["div.pjgm-postcontent".to_owned()],
+            selectors: vec![
+                "div.story-body".to_owned(),
+                "div.vxp-media__body".to_owned(),
+                "div.Theme-Layer-BodyText".to_owned(),
+                "div.two-column-grid".to_owned(),
+            ],
         },
     };
     info!("{}", serde_json::to_string(&event).unwrap());

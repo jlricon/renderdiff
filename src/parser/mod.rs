@@ -82,18 +82,3 @@ mod test {
         assert_eq!("This tho\n", parsed);
     }
 }
-
-// BBC
-// fn bla() {
-//     let ba = ScrapingCondition {
-//         base_url: "https://www.bbc.co.uk/news",
-//         links: LinkScrapingCondition::new(r#"a.nw-o-link-split__anchor"#, "/news", "/live"),
-//         content: ContentScrapingCondition {
-//             selectors: vec![
-//                 Selector::parse("div.story-body").unwrap(),
-//                 Selector::parse("div.vxp-media__body").unwrap(),
-//                 Selector::parse("div.Theme-Layer-BodyText").unwrap(),
-//             ],
-//         },
-//     };
-// }

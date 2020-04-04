@@ -31,7 +31,6 @@ fn handler(
         LOGGER.start_logging();
     }
     let _guard = sentry::init(env::var("SENTRY_URL").unwrap());
-    sentry::capture_message(&format!("Got event {:?}", &event), sentry::Level::Info);
     register_panic_handler();
     info!("{:?}", event);
     Ok(push_vox_into_db(event.into(), false).unwrap())
