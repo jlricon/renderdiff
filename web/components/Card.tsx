@@ -39,6 +39,7 @@ function Card({ data }: Props) {
               lastRevision={lastRevision}
               updateHandler={updateDataAfterSliderIsClicked}
             />
+            <p>{dataState.url.split("/")[2]}</p>
 
             <p className="text-xs md:text-base">
               Last:{" "}
@@ -49,7 +50,7 @@ function Card({ data }: Props) {
             </p>
           </div>
         </h3>
-        <p className="mt-1 text-sm leading-5 text-gray-500">
+        <div className="mt-1 text-sm leading-5 text-gray-500">
           From{" "}
           <a className="hover:text-teal-300 break-all" href={dataState.url}>
             {dataState.url}
@@ -65,7 +66,7 @@ function Card({ data }: Props) {
             </a>
             )
           </div>
-        </p>
+        </div>
       </div>
 
       <div className="bg-gray-50 px-4 py-5 sm:gap-4 sm:px-6 text-sm text-justify break-all">

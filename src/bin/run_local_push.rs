@@ -30,19 +30,14 @@ fn main() {
         .unwrap();
     dotenv::dotenv().ok();
     let event = SerializableScrapingCondition {
-        base_url: "https://www.bbc.co.uk/news".to_owned(),
+        base_url: "https://nytimes.com/".to_owned(),
         links: SerializableLinkScrapingCondition {
-            selector: r#"a.nw-o-link-split__anchor"#.to_owned(),
-            href_regex: "/news".to_owned(),
-            href_regex_exclude: Some("/live".to_owned()),
+            selector: r#"article > div > div  a"#.to_owned(),
+            href_regex: ".+".to_owned(),
+            href_regex_exclude: Some("puzzles|crosswords|interactive".to_owned()),
         },
         content: SerializableContentScrapingCondition {
-            selectors: vec![
-                "div.story-body".to_owned(),
-                "div.vxp-media__body".to_owned(),
-                "div.Theme-Layer-BodyText".to_owned(),
-                "div.two-column-grid".to_owned(),
-            ],
+            selectors: vec!["section[name=\"articleBody\"]".to_owned()],
         },
     };
     info!("{}", serde_json::to_string(&event).unwrap());

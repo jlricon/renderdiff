@@ -1,14 +1,25 @@
 import Head from "next/head";
 import Link from "next/link";
 import ReactGA from "react-ga";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import LoginButton from "./LoginButton";
 function initGa() {
   ReactGA.initialize("UA-4255500-4");
   ReactGA.pageview(window.location.pathname + window.location.search);
 }
 interface Props {}
 function Dashboard({ children }: React.PropsWithChildren<Props>) {
+  const [isAuthed, setAuthed] = useState(false);
   useEffect(() => {
+    async function anyNameFunction() {
+      const ret = await fetch("/api/me");
+      if (ret.ok) {
+        setAuthed(true);
+      } else {
+        setAuthed(false);
+      }
+    }
+    anyNameFunction();
     initGa();
   }, []);
   return (
@@ -35,9 +46,7 @@ function Dashboard({ children }: React.PropsWithChildren<Props>) {
                   </Link>
                 </h1>
               </div>
-              {/* <h2 className="text-sm text-center text-teal-300 align-baseline">
-                  What has been seen cannot be unseen :)
-                </h2> */}
+              <LoginButton isAuthed={isAuthed} />
             </div>
           </div>
         </div>

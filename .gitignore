@@ -12,3 +12,4 @@ go_db/
 lambda.zip
 web/package-lock.json
 build.sh
+web/now.json

@@ -1,5 +1,5 @@
 import fetch from "isomorphic-unfetch";
-const HOST = "https://diff_text.jlricon.workers.dev/";
+import configs from "./config";
 // TODO Make into an enum
 export type Diff = "Equal" | "Insert" | "Delete";
 export type DiffDict = { [kind in Diff]: string };
@@ -36,7 +36,7 @@ export async function getLatestDiffs(
     kind: "last_diffs",
     params: { n: n, offset: offset },
   };
-  let resp: LastDiffs<string | number> = await fetch(HOST, {
+  let resp: LastDiffs<string | number> = await fetch(configs.worker, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -66,7 +66,7 @@ export async function getDiffsForTwo(
     kind: "diff_two",
     params: { url: url, v1: rev1, v2: rev2 },
   };
-  let resp = await fetch(HOST, {
+  let resp = await fetch(configs.worker, {
     method: "POST",
     headers: {
       Accept: "application/json",
