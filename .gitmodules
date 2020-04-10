@@ -1,0 +1,3 @@
+[submodule "web/wasm-diff"]
+	path = web/wasm-diff
+	url = https://github.com/jlricon/wasm-diff
