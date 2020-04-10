@@ -141,7 +141,6 @@ async function getDiffForUrlAndRevisions(url: string, v1: number, v2: number) {
       });
     })
     .then((e) => e.json());
-  console.log(JSON.stringify(some_data.data));
   const records: HasuraTwoDiffResponse[] = some_data.data.vox_records;
   if (records.length == 0) {
     return {};

@@ -1,17 +1,19 @@
 import { getLatestDiffs, DiffBunch, Diff, stringToDateBunch } from "../lib/lib";
 import Card from "../components/Card";
-// import { GetServerSideProps, GetStaticProps } from "next";
 import { useState, useEffect } from "react";
 import Dashboard from "../components/Dashboard";
 import { LoadMoreButton } from "../components/LoadMoreButton";
 import { Footer } from "../components/Footer";
+import { GetServerSideProps } from "next";
+import auth0 from "../lib/auth0";
 
 interface Props {
   data: DiffBunch<number>[];
+  isLoggedIn: boolean;
 }
-function Home({ data }: Props) {
+function Home({ data, isLoggedIn }: Props) {
   const empty = [] as DiffBunch<number>[];
-  const [dataState, setData] = useState(empty);
+  const [dataState, setData] = useState(data);
   const [loadedN, setLoadedN] = useState(dataState.length);
   const [allLoaded, setAllLoaded] = useState(false);
   async function handleButtonClick(n: number) {
@@ -34,7 +36,7 @@ function Home({ data }: Props) {
     anyNameFunction();
   }, []);
   return (
-    <Dashboard>
+    <Dashboard isLoggedIn={isLoggedIn}>
       <div
         className="flex flex-col h-cover w-cover"
         // style={{ minHeight: "100vh", minWidth: "fit-content" }}
@@ -57,7 +59,14 @@ function Home({ data }: Props) {
 
 export default Home;
 
-// export const getServerSideProps: GetServerSideProps = async (ctx) => {
-//   const data = await getLatestDiffs(10, 0);
-//   return { props: { data: data.data } };
-// };
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const data = getLatestDiffs(10, 0);
+  let isLoggedIn = false;
+  if (typeof window === "undefined") {
+    const ses = await auth0.getSession(ctx.req);
+    if (ses) {
+      isLoggedIn = true;
+    }
+  }
+  return { props: { data: (await data).data, isLoggedIn } };
+};

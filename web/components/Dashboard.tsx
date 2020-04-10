@@ -7,21 +7,23 @@ function initGa() {
   ReactGA.initialize("UA-4255500-4");
   ReactGA.pageview(window.location.pathname + window.location.search);
 }
-interface Props {}
-function Dashboard({ children }: React.PropsWithChildren<Props>) {
-  const [isAuthed, setAuthed] = useState(false);
-  useEffect(() => {
-    async function anyNameFunction() {
-      const ret = await fetch("/api/me");
-      if (ret.ok) {
-        setAuthed(true);
-      } else {
-        setAuthed(false);
-      }
-    }
-    anyNameFunction();
-    initGa();
-  }, []);
+interface Props {
+  isLoggedIn: boolean;
+}
+function Dashboard({ children, isLoggedIn }: React.PropsWithChildren<Props>) {
+  // const [isAuthed, setAuthed] = useState(false);
+  // useEffect(() => {
+  //   async function anyNameFunction() {
+  //     const ret = await fetch("/api/me");
+  //     if (ret.ok) {
+  //       setAuthed(true);
+  //     } else {
+  //       setAuthed(false);
+  //     }
+  //   }
+  //   anyNameFunction();
+  //   initGa();
+  // }, []);
   return (
     <>
       <Head>
@@ -46,7 +48,7 @@ function Dashboard({ children }: React.PropsWithChildren<Props>) {
                   </Link>
                 </h1>
               </div>
-              <LoginButton isAuthed={isAuthed} />
+              <LoginButton isAuthed={isLoggedIn} />
             </div>
           </div>
         </div>
