@@ -3,7 +3,6 @@ import fetch from "isomorphic-unfetch";
 import { NextPageContext } from "next";
 import auth0 from "../lib/auth0";
 import { IncomingMessage } from "http";
-
 interface Props {
   isAuthed: boolean;
 }
@@ -39,17 +38,16 @@ export async function getServerSideProps(ctx: NextPageContext) {
       return;
     }
     const user_id: string | undefined = user?.sub;
-    const isAdmin = await fetch(
+    const resp = await fetch(
       `${process.env.AUTH0_HOST}/api/v2/users/${user_id}/roles`,
       {
         headers: {
           authorization: `Bearer ${process.env.AUTH0_BEARER}`,
         },
       }
-    )
-      .then((e) => e.json())
-      .then((e) => e.map((i: { name: string }) => i.name))
-      .then((e) => e.includes("Admin"));
+    ).then((e) => e.json());
+    const roles = resp.map((i: { name: string }) => i.name);
+    const isAdmin = roles.includes("Admin");
     return { props: { isAuthed: isAdmin } };
   }
 }

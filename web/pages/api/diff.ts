@@ -1,20 +1,22 @@
 import { NowRequest, NowResponse } from "@now/node";
-import { diff_match_patch, Diff } from "diff-match-patch";
+const wasm_diff = import("wasm-diff");
 import fetch from "isomorphic-unfetch";
+import { Diff } from "wasm-diff";
 const TRIM_LEN = 30;
 const hasuraHeaders = {
   "x-hasura-admin-secret": process.env.HASURA_TOKEN as string,
   "Content-Type": "application/json",
 };
+type DiffType = "Delete" | "Equal" | "Insert";
 
 enum RequestType {
   DiffTwo = "diff_two",
   LastDiffs = "last_diffs",
 }
-const dpm = new diff_match_patch();
-const doDiff = (x: string, y: string) => {
-  let diffs = dpm.diff_main(x, y);
-  dpm.diff_cleanupSemantic(diffs);
+// const dpm = new diff_match_patch();
+const doDiff = async (x: string, y: string): Promise<Diff[]> => {
+  const diff_text = await wasm_diff.then((d) => d.diff_text);
+  const diffs = diff_text(x, y);
   return diffs;
 };
 
@@ -69,7 +71,10 @@ async function getLastDiffs(n: number, offset: number) {
   old_records.sort((a, b) => compare(a.url, b.url));
   let res = [];
   for (var i = 0; i < new_records.length; i += 1) {
-    const one_diff = doDiff(old_records[i].content, new_records[i].content);
+    const one_diff = await doDiff(
+      old_records[i].content,
+      new_records[i].content
+    );
     res.push({
       diff: one_diff.map(diffToJsonDiff),
       url: old_records[i].url,
@@ -97,14 +102,10 @@ function compare(a: string, b: string) {
 }
 
 function diffToJsonDiff(a: Diff) {
-  switch (a[0]) {
-    case -1:
-      return { Delete: a[1] };
-    case 0:
-      return { Equal: trimLen(a[1]) };
-    case 1:
-      return { Insert: a[1] };
+  if ("Equal" in a) {
+    return { Equal: trimLen(a["Equal"]) };
   }
+  return a;
 }
 function trimLen(str: string): string {
   if (str.length < TRIM_LEN * 2 + 1) {
@@ -147,9 +148,9 @@ async function getDiffForUrlAndRevisions(url: string, v1: number, v2: number) {
   }
   const content_v1 = records.filter((e) => e.revision === v1)[0];
   const content_v2 = records.filter((e) => e.revision === v2)[0];
-  const diffed_text = doDiff(content_v1.content, content_v2.content).map(
-    diffToJsonDiff
-  );
+  const diffed_text = (
+    await doDiff(content_v1.content, content_v2.content)
+  ).map(diffToJsonDiff);
   return {
     diff: diffed_text,
     date_rev1: content_v1.date_seen,
