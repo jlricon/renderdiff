@@ -4,17 +4,9 @@ interface Props {
 }
 function Button({ isAuthed }: Props) {
   if (!isAuthed) {
-    return (
-      <Link href="/api/login">
-        <a>Login</a>
-      </Link>
-    );
+    return <a href="/api/login">Login</a>;
   } else {
-    return (
-      <Link href="/api/logout">
-        <a>Logout</a>
-      </Link>
-    );
+    return <a href="/api/logout">Logout</a>;
   }
 }
 
