@@ -1,4 +1,4 @@
-import auth0 from "../../lib/auth0";
+import auth0 from "../lib/auth0";
 import { NextApiResponse, NextApiRequest } from "next";
 
 export default async function me(req: NextApiRequest, res: NextApiResponse) {
