@@ -36,14 +36,17 @@ export async function getLatestDiffs(
     kind: "last_diffs",
     params: { n: n, offset: offset },
   };
-  let resp: LastDiffs<string | number> = await fetch(configs.worker, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(req),
-  }).then((e) => e.json());
+  let resp: LastDiffs<string | number> = await fetch(
+    configs.baseUrl + "/api/diff",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(req),
+    }
+  ).then((e) => e.json());
   resp.data.map((d) => {
     d.date_seen1 = Date.parse(d.date_seen1 as string);
     d.date_seen2 = Date.parse(d.date_seen2 as string);
@@ -66,7 +69,7 @@ export async function getDiffsForTwo(
     kind: "diff_two",
     params: { url: url, v1: rev1, v2: rev2 },
   };
-  let resp = await fetch(configs.worker, {
+  let resp = await fetch(configs.baseUrl + "/api/diff", {
     method: "POST",
     headers: {
       Accept: "application/json",
