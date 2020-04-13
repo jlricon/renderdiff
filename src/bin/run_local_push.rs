@@ -30,14 +30,14 @@ fn main() {
         .unwrap();
     dotenv::dotenv().ok();
     let event = SerializableScrapingCondition {
-        base_url: "https://nytimes.com/".to_owned(),
+        base_url: "https://nintil.com/".to_owned(),
         links: SerializableLinkScrapingCondition {
-            selector: r#"article > div > div  a"#.to_owned(),
+            selector: r#"h1.post__title > a"#.to_owned(),
             href_regex: ".+".to_owned(),
-            href_regex_exclude: Some("puzzles|crosswords|interactive".to_owned()),
+            href_regex_exclude: None,
         },
         content: SerializableContentScrapingCondition {
-            selectors: vec!["section[name=\"articleBody\"]".to_owned()],
+            selectors: vec!["div.post-content".to_owned()],
         },
     };
     info!("{}", serde_json::to_string(&event).unwrap());

@@ -63,10 +63,7 @@ pub fn strings_are_dif_equal<'a>(a: &'a str, b: &'a str) -> bool {
         .iter()
         .filter(|m| match m {
             Chunk::Equal(_) => false,
-            Chunk::Delete(e) | Chunk::Insert(e) => {
-                println!("{}", e);
-                true
-            }
+            Chunk::Delete(_e) | Chunk::Insert(_e) => true,
         })
         .count()
         == 0

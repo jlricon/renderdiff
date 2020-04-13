@@ -11,7 +11,7 @@ function Card({ data }: Props) {
   async function updateDataAfterSliderIsClicked(rev1: number, rev2: number) {
     const resp = await getDiffsForTwo(dataState.url, rev1, rev2);
     const newData: DiffBunch<Date> = {
-      diff: resp.diff,
+      diff: resp.diffs,
       last_revision: rev2,
       prev_revision: rev1,
       url: dataState.url,

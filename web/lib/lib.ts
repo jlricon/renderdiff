@@ -1,16 +1,24 @@
 import fetch from "isomorphic-unfetch";
 import configs from "./config";
+import { RequestType } from "../pages/api/diff";
 // TODO Make into an enum
 export type Diff = "Equal" | "Insert" | "Delete";
 export type DiffDict = { [kind in Diff]: string };
-export type WorkerRequest = WorkerRequestDiffTwo | WorkerRequestLastDiffs;
+export type WorkerRequest =
+  | WorkerRequestDiffTwo
+  | WorkerRequestLastDiffs
+  | WorkerRequestLastDiffsBySite;
 interface WorkerRequestDiffTwo {
-  kind: "diff_two";
+  kind: RequestType.DiffTwo;
   params: { url: string; v1: number; v2: number };
 }
 interface WorkerRequestLastDiffs {
-  kind: "last_diffs";
+  kind: RequestType.LastDiffs;
   params: { n: number; offset: number };
+}
+interface WorkerRequestLastDiffsBySite {
+  kind: RequestType.LastDiffsBySite;
+  params: { n: number; offset: number; site: string };
 }
 interface Diffs {
   data: DiffDict[];
@@ -23,20 +31,24 @@ export interface DiffBunch<T> {
   date_seen2: T;
   diff: DiffDict[];
 }
-interface LastDiffs<T> {
-  data: DiffBunch<T>[];
+// interface LastDiffs<T> {
+//   data: DiffBunch<T>[];
+// }
+interface LastDiffsReturn<T> {
+  diffs: DiffBunch<T>[];
+  sites: string[];
 }
-
 // Returns [(url,last_revision,site,diff,date_seen1,date_seen2)]
-export async function getLatestDiffs(
+export async function getLatestDiffsBySite(
   n: number,
-  offset: number
-): Promise<LastDiffs<number>> {
-  const req: WorkerRequestLastDiffs = {
-    kind: "last_diffs",
-    params: { n: n, offset: offset },
+  offset: number,
+  site: string
+): Promise<LastDiffsReturn<number>> {
+  const req: WorkerRequestLastDiffsBySite = {
+    kind: RequestType.LastDiffsBySite,
+    params: { n: n, offset: offset, site: site },
   };
-  let resp: LastDiffs<string | number> = await fetch(
+  let { diffs, sites }: LastDiffsReturn<number | string> = await fetch(
     configs.baseUrl + "/api/diff",
     {
       method: "POST",
@@ -47,16 +59,44 @@ export async function getLatestDiffs(
       body: JSON.stringify(req),
     }
   ).then((e) => e.json());
-  resp.data.map((d) => {
+
+  diffs.map((d) => {
     d.date_seen1 = Date.parse(d.date_seen1 as string);
     d.date_seen2 = Date.parse(d.date_seen2 as string);
   });
-  let resp2 = resp as LastDiffs<number>;
-  resp2.data = resp2.data.sort((a, b) => b.date_seen2 - a.date_seen2);
-  return resp2 as LastDiffs<number>;
+  let diffs2 = diffs as DiffBunch<number>[];
+  diffs2 = diffs2.sort((a, b) => b.date_seen2 - a.date_seen2);
+  return { diffs: diffs2 as DiffBunch<number>[], sites: sites };
+}
+export async function getLatestDiffs(
+  n: number,
+  offset: number
+): Promise<LastDiffsReturn<number>> {
+  const req: WorkerRequestLastDiffs = {
+    kind: RequestType.LastDiffs,
+    params: { n: n, offset: offset },
+  };
+  let { diffs, sites }: LastDiffsReturn<number | string> = await fetch(
+    configs.baseUrl + "/api/diff",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(req),
+    }
+  ).then((e) => e.json());
+  diffs.map((d) => {
+    d.date_seen1 = Date.parse(d.date_seen1 as string);
+    d.date_seen2 = Date.parse(d.date_seen2 as string);
+  });
+  let diffs2 = diffs as DiffBunch<number>[];
+  diffs2 = diffs2.sort((a, b) => b.date_seen2 - a.date_seen2);
+  return { diffs: diffs2 as DiffBunch<number>[], sites: sites };
 }
 interface DiffTwoReturn {
-  diff: DiffDict[];
+  diffs: DiffDict[];
   date_rev1: number;
   date_rev2: number;
 }
@@ -66,7 +106,7 @@ export async function getDiffsForTwo(
   rev2: number
 ): Promise<DiffTwoReturn> {
   const req = {
-    kind: "diff_two",
+    kind: RequestType.DiffTwo,
     params: { url: url, v1: rev1, v2: rev2 },
   };
   let resp = await fetch(configs.baseUrl + "/api/diff", {
@@ -80,8 +120,7 @@ export async function getDiffsForTwo(
 
   resp.date_rev1 = Date.parse(resp.date_rev1 as string);
   resp.date_rev2 = Date.parse(resp.date_rev2 as string);
-  const resp2: DiffTwoReturn = resp.data;
-  return resp2;
+  return resp;
 }
 export function stringToDateBunch(x: DiffBunch<number>): DiffBunch<Date> {
   return {

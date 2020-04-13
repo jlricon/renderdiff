@@ -7,7 +7,7 @@ const purgecss = require("@fullhuman/postcss-purgecss")({
   whitelistPatterns: [/^rc-slider/],
 
   // Include any special characters you're using in this regular expression
-  defaultExtractor: content => content.match(/[\w-/:]+(?<!:)/g) || []
+  defaultExtractor: (content) => content.match(/[\w-/:]+(?<!:)/g) || [],
 });
 
 module.exports = {
@@ -15,8 +15,8 @@ module.exports = {
     require("tailwindcss"),
     require("postcss-preset-env"),
     require("autoprefixer"),
-    ...(process.env.NODE_ENV === "production" ? [purgecss] : [])
-  ]
+    ...(process.env.NODE_ENV === "production" ? [purgecss] : []),
+  ],
 };
 // module.exports = {
 //   plugins: ["tailwindcss", "postcss-preset-env"]

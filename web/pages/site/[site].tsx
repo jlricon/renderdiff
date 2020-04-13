@@ -1,25 +1,31 @@
-import { getLatestDiffs, DiffBunch, Diff, stringToDateBunch } from "../lib/lib";
-import Card from "../components/Card";
+import {
+  getLatestDiffsBySite,
+  DiffBunch,
+  stringToDateBunch,
+} from "../../lib/lib";
+import Card from "../../components/Card";
 import { useState, useEffect } from "react";
-import Dashboard from "../components/Dashboard";
-import { LoadMoreButton } from "../components/LoadMoreButton";
-import { Footer } from "../components/Footer";
+import Dashboard from "../../components/Dashboard";
+import { LoadMoreButton } from "../../components/LoadMoreButton";
+import { Footer } from "../../components/Footer";
 import { GetServerSideProps } from "next";
-import auth0 from "../lib/auth0";
+import auth0 from "../../lib/auth0";
 import Link from "next/link";
 
 interface Props {
   diffs: DiffBunch<number>[];
   sites: string[];
   isLoggedIn: boolean;
+  site: string;
 }
-function Home({ diffs, sites, isLoggedIn }: Props) {
+function Home({ diffs, sites, isLoggedIn, site }: Props) {
   // const empty = [] as DiffBunch<number>[];
   const [dataState, setData] = useState(diffs);
   const [loadedN, setLoadedN] = useState(dataState.length);
-  const [allLoaded, setAllLoaded] = useState(false);
+
+  const [allLoaded, setAllLoaded] = useState(loadedN === 0);
   async function getNMoreDiffs(n: number) {
-    const { diffs } = await getLatestDiffs(n, loadedN);
+    const { diffs } = await getLatestDiffsBySite(n, loadedN, site);
     const newData = diffs;
     const prevLen = dataState.length;
     const concatted = dataState.concat(newData);
@@ -30,14 +36,7 @@ function Home({ diffs, sites, isLoggedIn }: Props) {
       setAllLoaded(true);
     }
   }
-  // useEffect(() => {
-  //   // Create an scoped async function in the hook
-  //   async function anyNameFunction() {
-  //     await getNMoreDiffs(10);
-  //   }
-  //   // Execute the created function directly
-  //   anyNameFunction();
-  // }, []);
+
   return (
     <Dashboard isLoggedIn={isLoggedIn}>
       <div
@@ -82,7 +81,8 @@ function Home({ diffs, sites, isLoggedIn }: Props) {
 export default Home;
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const data = getLatestDiffs(10, 0);
+  const site: string = ctx.req.url?.split("/site/")[1] as string;
+  const data = getLatestDiffsBySite(10, 0, site);
   let isLoggedIn = false;
   if (typeof window === "undefined") {
     const ses = await auth0.getSession(ctx.req);
@@ -91,5 +91,5 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     }
   }
   const { diffs, sites } = await data;
-  return { props: { diffs, isLoggedIn, sites } };
+  return { props: { diffs, isLoggedIn, sites, site } };
 };

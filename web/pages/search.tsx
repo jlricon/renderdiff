@@ -42,7 +42,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       prev_revision: parseInt(rev1 as string),
       date_seen1: data.date_rev1,
       date_seen2: data.date_rev2,
-      diff: data.diff,
+      diff: data.diffs,
     };
   });
   // const diffBunch: DiffBunch<number> = ;
