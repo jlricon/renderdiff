@@ -10,11 +10,8 @@ interface Props {
 }
 function Search({ data, isLoggedIn }: Props) {
   return (
-    <Dashboard isLoggedIn={isLoggedIn}>
-      <div
-        className="flex flex-col h-cover w-cover"
-        // style={{ minHeight: "100vh", minWidth: "fit-content" }}
-      >
+    <Dashboard isLoggedIn={isLoggedIn} isLoading={false}>
+      <div className="flex flex-col h-cover w-cover">
         <div className="mx-auto">
           <main>
             <Card data={stringToDateBunch(data)} />

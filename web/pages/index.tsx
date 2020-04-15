@@ -7,6 +7,7 @@ import { Footer } from "../components/Footer";
 import { GetServerSideProps } from "next";
 import auth0 from "../lib/auth0";
 import Link from "next/link";
+import LinkSidebar from "../components/LinkSidebar";
 
 interface Props {
   diffs: DiffBunch<number>[];
@@ -16,9 +17,11 @@ interface Props {
 function Home({ diffs, sites, isLoggedIn }: Props) {
   // const empty = [] as DiffBunch<number>[];
   const [dataState, setData] = useState(diffs);
+  const [isLoading, setIsLoading] = useState(false);
   const [loadedN, setLoadedN] = useState(dataState.length);
   const [allLoaded, setAllLoaded] = useState(false);
   async function getNMoreDiffs(n: number) {
+    setIsLoading(true);
     const { diffs } = await getLatestDiffs(n, loadedN);
     const newData = diffs;
     const prevLen = dataState.length;
@@ -29,44 +32,20 @@ function Home({ diffs, sites, isLoggedIn }: Props) {
     } else {
       setAllLoaded(true);
     }
+    setIsLoading(false);
   }
-  // useEffect(() => {
-  //   // Create an scoped async function in the hook
-  //   async function anyNameFunction() {
-  //     await getNMoreDiffs(10);
-  //   }
-  //   // Execute the created function directly
-  //   anyNameFunction();
-  // }, []);
+
   return (
-    <Dashboard isLoggedIn={isLoggedIn}>
-      <div
-        className="flex flex-row h-cover w-cover"
-        // style={{ minHeight: "100vh", minWidth: "fit-content" }}
-      >
-        <div className=" hidden md:block ">
-          <h2 className="text-center mb-3 lg:mb-2 text-gray-500 uppercase tracking-wide font-bold text-sm lg:text-xs">
-            {" "}
-            Sites available
-          </h2>
-          <ul>
-            {sites.map((c, index) => (
-              <Link href={`/site/${c}`} key={index}>
-                <a
-                  className="px-2 -mx-2 py-1 transition duration-200 ease-in-out
-                 relative block hover:translate-x-2px hover:text-gray-900 text-gray-600 font-medium
-                 bg-gray-200 my-2 rounded"
-                >
-                  {c}
-                </a>
-              </Link>
-            ))}
-          </ul>
-        </div>
+    <Dashboard isLoggedIn={isLoggedIn} isLoading={isLoading}>
+      <div className="flex flex-row h-cover w-cover">
+        <LinkSidebar sites={sites} />
         <div className="mx-auto">
           <main>
-            {dataState.map((c, index) => (
-              <Card data={stringToDateBunch(c)} key={index} />
+            {dataState.map((c) => (
+              <Card
+                data={stringToDateBunch(c)}
+                key={c.url + c.last_revision + c.prev_revision}
+              />
             ))}
           </main>
           <div className="justify-center text-center pb-3">

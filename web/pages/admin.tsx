@@ -17,7 +17,11 @@ function renderAdmin(isAuthed: boolean) {
   }
 }
 function Home({ isAuthed }: Props) {
-  return <Dashboard isLoggedIn={isAuthed}>{renderAdmin(isAuthed)}</Dashboard>;
+  return (
+    <Dashboard isLoggedIn={isAuthed} isLoading={false}>
+      {renderAdmin(isAuthed)}
+    </Dashboard>
+  );
 }
 
 export default Home;

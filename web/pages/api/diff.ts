@@ -56,8 +56,8 @@ async function getLastDiffs(n: number, offset: number) {
             content
             latest
         }
-        vox_records(distinct_on: site) {
-            site
+        vox_records(distinct_on: site, where: {revision: {_gt: 1}}) {
+          site
         }
         }`,
       variables: { lim: n, offset: offset },
@@ -112,8 +112,8 @@ async function getLastDiffsBySite(n: number, offset: number, site: string) {
             content
             latest
         }
-        vox_records(distinct_on: site) {
-            site
+        vox_records(distinct_on: site, where: {revision: {_gt: 1}}) {
+          site
         }
         }`,
       variables: { lim: n, offset: offset, target_site: site },
